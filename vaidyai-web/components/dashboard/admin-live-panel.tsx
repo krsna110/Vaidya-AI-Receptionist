@@ -57,7 +57,7 @@ export function AdminLivePanel() {
       setPatients(await pRes.json());
       setStatus(`Updated at ${new Date().toLocaleTimeString()}`);
     } catch {
-      setStatus("Cannot connect backend. Ensure FastAPI is running on 127.0.0.1:8000");
+      setStatus(`Cannot connect backend at ${BACKEND_URL}`);
     }
   };
 

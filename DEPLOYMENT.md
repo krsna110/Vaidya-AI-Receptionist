@@ -54,12 +54,21 @@ It should return:
 
 ## 2. Deploy Frontend
 
-Use Vercel for the Next.js app.
+Use Render as a Node web service or use Vercel for the Next.js app.
 
 Frontend root directory:
 
 ```text
 vaidyai-web
+```
+
+Render settings:
+
+```text
+Root Directory: vaidyai-web
+Runtime: Node
+Build Command: npm ci && npm run build
+Start Command: npm run start -- -p $PORT
 ```
 
 Build command:
@@ -73,6 +82,8 @@ Environment variables:
 ```text
 NEXT_PUBLIC_BACKEND_URL=https://your-backend-domain
 ```
+
+Do not deploy this Next.js app as a Render Static Site unless you remove the Next API routes. Use a Render Web Service so `/api/*`, `/admin`, and `next start` work correctly.
 
 ## 3. Connect Both Apps
 

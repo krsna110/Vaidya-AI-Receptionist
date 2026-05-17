@@ -104,11 +104,11 @@ export default function ChatPage() {
         ]);
       } catch {
         if (!mounted) return;
-        setStatus("Backend not reachable. Start FastAPI at 127.0.0.1:8000");
+        setStatus(`Backend not reachable at ${BACKEND_URL}`);
         setMessages([
           {
             role: "ai",
-            text: "I cannot reach the backend right now. Please start the FastAPI server and refresh.",
+            text: "I cannot reach the backend right now. Please check the deployed backend URL and refresh.",
             timestamp: now()
           }
         ]);

@@ -55,7 +55,7 @@ def normalize_booking_date(raw_date: str) -> str:
     today_obj = date.today()
     if value == "today":
         return today_obj.isoformat()
-    if value == "tomorrow":
+    if value in ("tomorrow", "tommorrow"):
         return (today_obj + timedelta(days=1)).isoformat()
     # Accept already-ISO dates as-is
     try:
@@ -63,6 +63,23 @@ def normalize_booking_date(raw_date: str) -> str:
         return parsed.isoformat()
     except Exception:
         return raw_date.strip()
+
+
+def normalize_booking_time(raw_time: str) -> str:
+    """Normalize common time phrases while keeping them readable."""
+    value = (raw_time or "").strip().lower().replace(".", "")
+    if not value:
+        return ""
+    value = re.sub(r"\s+", " ", value)
+    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*([ap]m)?", value)
+    if not match:
+        return raw_time.strip()
+    hour = int(match.group(1))
+    minute = match.group(2) or "00"
+    meridiem = match.group(3)
+    if meridiem:
+        return f"{hour}:{minute} {meridiem.upper()}"
+    return f"{hour}:{minute}"
 
 
 def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
@@ -109,6 +126,74 @@ def extract_appointment_id(data: dict, message: str) -> int | None:
         if value and value.isdigit():
             return int(value)
     return None
+
+
+def extract_booking_details(message: str) -> dict:
+    """Extract booking fields from common free-text patient replies."""
+    text = (message or "").strip()
+    lowered = text.lower()
+    details: dict[str, str] = {}
+
+    name_match = re.search(
+        r"\b(?:my name is|name is|name)\s+([a-z][a-z .'-]{1,60}?)(?=\s+(?:and|phone|number|mobile|want|for|at|on|tomorrow|today)\b|$)",
+        lowered,
+        re.IGNORECASE,
+    )
+    if name_match:
+        details["name"] = " ".join(part.capitalize() for part in name_match.group(1).strip().split())
+
+    phone_match = re.search(
+        r"(?:\+?\d[\d\s-]{7,}\d)",
+        text,
+    )
+    if phone_match:
+        details["phone"] = normalize_phone(phone_match.group(0))
+
+    date_match = re.search(
+        r"\b(today|tomorrow|tommorrow|\d{4}-\d{1,2}-\d{1,2})\b",
+        lowered,
+        re.IGNORECASE,
+    )
+    if date_match:
+        details["date"] = normalize_booking_date(date_match.group(1))
+
+    time_match = re.search(r"\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\b", lowered, re.IGNORECASE)
+    if time_match:
+        details["time"] = normalize_booking_time(time_match.group(1))
+
+    reason_match = re.search(
+        r"\b(?:about|for|regarding|because of|consult about|consult for)\s+([a-z][a-z .'-]{1,80}?)(?=\s+(?:on|at|today|tomorrow|tommorrow)\b|$)",
+        lowered,
+        re.IGNORECASE,
+    )
+    if reason_match:
+        details["reason"] = reason_match.group(1).strip()
+    elif any(word in lowered for word in ["piles", "fever", "pain", "cough", "dermatologist", "consult"]):
+        symptom_match = re.search(r"\b(?:piles|fever|pain|cough|dermatologist|consultation)\b", lowered)
+        if symptom_match:
+            details["reason"] = symptom_match.group(0)
+
+    return {key: value for key, value in details.items() if value}
+
+
+def is_booking_message(message: str, details: dict | None = None) -> bool:
+    text_msg = (message or "").strip().lower()
+    if details:
+        return True
+    booking_terms = ["book", "appointment", "consult", "visit", "schedule"]
+    return any(term in text_msg for term in booking_terms)
+
+
+def missing_booking_fields(data: dict) -> list[str]:
+    required = ["name", "phone", "date", "time", "reason"]
+    return [field for field in required if not (data.get(field) or "").strip()]
+
+
+def booking_summary(data: dict) -> str:
+    return (
+        f"name: {data.get('name')}, phone: {normalize_phone(data.get('phone') or '')}, "
+        f"date: {data.get('date')}, time: {data.get('time')}, reason: {data.get('reason')}"
+    )
 
 
 def cancel_appointment_record(db: Session, appointment_id: int) -> bool:
@@ -478,6 +563,18 @@ async def webhook_receiver(
             "state": current_state,
         }
 
+    deterministic_data = extract_booking_details(message)
+    booking_states = {"COLLECT_INFO", "SUGGEST_SLOT", "CONFIRM", "BOOKING"}
+    if current_state in booking_states and intent in {"GREETING", "FAQ", "UNKNOWN"} and is_booking_message(message, deterministic_data):
+        intent = "BOOKING"
+    elif intent in {"FAQ", "UNKNOWN"} and is_booking_message(message, deterministic_data):
+        intent = "BOOKING"
+
+    if isinstance(data, dict):
+        data = {**data, **deterministic_data}
+    else:
+        data = deterministic_data
+
     # Merge with existing state data so multi-turn collection is preserved.
     try:
         existing_data = json.loads(conversation_state.data or "{}")
@@ -488,6 +585,10 @@ async def webhook_receiver(
     merged_data = {**existing_data, **(data if isinstance(data, dict) else {})}
     if merged_data.get("date"):
         merged_data["date"] = normalize_booking_date(merged_data.get("date"))
+    if merged_data.get("time"):
+        merged_data["time"] = normalize_booking_time(merged_data.get("time"))
+    if merged_data.get("phone"):
+        merged_data["phone"] = normalize_phone(merged_data.get("phone"))
 
     try:
         upsert_patient_from_data(db, merged_data)
@@ -509,35 +610,69 @@ async def webhook_receiver(
                 event_id = sync_appointment_to_google_calendar(db, appt_id)
                 if event_id:
                     merged_data["google_event_id"] = event_id
-        except Exception as e:
-            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
-    elif intent == "BOOKING":
-        if current_state in ("GREETING", "INTENT_DETECT"):
-            new_state = "COLLECT_INFO"
-        elif current_state == "COLLECT_INFO":
-            if (
-                merged_data.get("date")
-                and merged_data.get("time")
-                and merged_data.get("reason")
-                and merged_data.get("name")
-                and merged_data.get("phone")
-            ):
-                new_state = "SUGGEST_SLOT"
+                response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
             else:
                 new_state = "COLLECT_INFO"
+                response_text = "I could not create the appointment. Please choose a different date or time."
+        except Exception as e:
+            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            new_state = "COLLECT_INFO"
+            response_text = "I could not create the appointment right now. Please try again."
+    elif intent == "BOOKING":
+        missing_fields = missing_booking_fields(merged_data)
+        if current_state in ("GREETING", "INTENT_DETECT", "FAQ", "UNKNOWN", "CANCEL", "CANCELLED", "BOOKED"):
+            if missing_fields:
+                new_state = "COLLECT_INFO"
+                response_text = (
+                    "Sure, I can help book your appointment. Please share your "
+                    f"{', '.join(missing_fields)}."
+                )
+            else:
+                new_state = "CONFIRM"
+                response_text = (
+                    "I have your appointment details: "
+                    f"{booking_summary(merged_data)}. Should I confirm this booking?"
+                )
+        elif current_state == "COLLECT_INFO":
+            if missing_fields:
+                new_state = "COLLECT_INFO"
+                response_text = (
+                    "Thanks. I still need your "
+                    f"{', '.join(missing_fields)} to book the appointment."
+                )
+            else:
+                new_state = "CONFIRM"
+                response_text = (
+                    "Great, I have your details: "
+                    f"{booking_summary(merged_data)}. Should I confirm this booking?"
+                )
         elif current_state == "SUGGEST_SLOT":
             new_state = "CONFIRM"
+            response_text = (
+                "I have your appointment details: "
+                f"{booking_summary(merged_data)}. Should I confirm this booking?"
+            )
         elif current_state == "CONFIRM":
-            new_state = "BOOKED"
-            try:
-                appt_id = create_appointment_from_booking_data(db, merged_data)
-                if appt_id:
-                    merged_data["appointment_id"] = appt_id
-                    event_id = sync_appointment_to_google_calendar(db, appt_id)
-                    if event_id:
-                        merged_data["google_event_id"] = event_id
-            except Exception as e:
-                logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            if is_confirmation_message(message):
+                new_state = "BOOKED"
+                try:
+                    appt_id = create_appointment_from_booking_data(db, merged_data)
+                    if appt_id:
+                        merged_data["appointment_id"] = appt_id
+                        event_id = sync_appointment_to_google_calendar(db, appt_id)
+                        if event_id:
+                            merged_data["google_event_id"] = event_id
+                        response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                    else:
+                        new_state = "COLLECT_INFO"
+                        response_text = "I could not create the appointment. Please choose a different date or time."
+                except Exception as e:
+                    logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+                    new_state = "COLLECT_INFO"
+                    response_text = "I could not create the appointment right now. Please try again."
+            else:
+                new_state = "CONFIRM"
+                response_text = "Please reply yes to confirm this appointment, or share any detail you want to change."
     elif intent == "CANCEL":
         appointment_id = extract_appointment_id(merged_data, message)
         if appointment_id:

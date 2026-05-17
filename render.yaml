@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: vaidyai-web
+    runtime: node
+    rootDir: vaidyai-web
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- -p $PORT
+    envVars:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        sync: false
