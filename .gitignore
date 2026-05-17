@@ -1,0 +1,15 @@
+.env
+.env.*
+token.json
+client_secret.json
+sql_app.db
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+.next/
+dist/
+build/
+tsconfig.tsbuildinfo

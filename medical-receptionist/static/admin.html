@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaidya AI Admin Dashboard</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --panel: #121a2b;
+            --panel-2: #1a2440;
+            --text: #e6edf7;
+            --muted: #9fb0cf;
+            --brand: #2ec4b6;
+            --danger: #ff6b6b;
+            --border: #2d3a58;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(1200px 500px at 20% -10%, #1a2a4d, transparent), var(--bg);
+            color: var(--text);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .status {
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .card {
+            background: linear-gradient(180deg, var(--panel), var(--panel-2));
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            overflow: hidden;
+        }
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            border: 1px solid var(--border);
+            background: #223150;
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button.primary {
+            background: var(--brand);
+            border-color: transparent;
+            color: #06231f;
+            font-weight: 700;
+        }
+        button.danger {
+            background: var(--danger);
+            border-color: transparent;
+            color: #2c0a0a;
+            font-weight: 700;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 540px;
+            font-size: 13px;
+        }
+        th, td {
+            border-bottom: 1px solid var(--border);
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #1b2a47;
+            color: #b9c8e6;
+            position: sticky;
+            top: 0;
+        }
+        .row-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <div class="title">Vaidya AI Admin Dashboard</div>
+                <div class="status" id="status">Connecting...</div>
+            </div>
+            <div class="actions">
+                <button class="primary" id="refreshAllBtn">Refresh All</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <section class="card">
+                <h2>Appointments</h2>
+                <div class="actions">
+                    <button id="refreshAppointmentsBtn">Refresh Appointments</button>
+                </div>
+                <div class="table-wrap">
+                    <table id="appointmentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Patient ID</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Reason</th>
+                                <th>Confirmed</th>
+                                <th>Google Event</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Patients</h2>
+                <div class="actions">
+                    <button id="refreshPatientsBtn">Refresh Patients</button>
+                </div>
+                <div class="table-wrap">
+                    <table id="patientsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+        <p class="muted">Tip: Cancel button sends a webhook message `cancel appointment &lt;id&gt;` as admin helper.</p>
+    </div>
+
+    <script>
+        let jwtToken = null;
+        const statusEl = document.getElementById("status");
+        const appointmentsBody = document.querySelector("#appointmentsTable tbody");
+        const patientsBody = document.querySelector("#patientsTable tbody");
+
+        async function authenticate() {
+            const response = await fetch("/auth/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: "username=admin&password=password"
+            });
+            if (!response.ok) throw new Error("Auth failed");
+            const data = await response.json();
+            jwtToken = data.access_token;
+        }
+
+        async function apiGet(url) {
+            const response = await fetch(url, {
+                headers: { "Authorization": `Bearer ${jwtToken}` }
+            });
+            if (!response.ok) throw new Error(`${url} failed (${response.status})`);
+            return response.json();
+        }
+
+        async function apiPost(url, payload) {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${jwtToken}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`${url} failed (${response.status})`);
+            return response.json();
+        }
+
+        function renderAppointments(rows) {
+            appointmentsBody.innerHTML = "";
+            rows.forEach((item) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${item.id ?? ""}</td>
+                    <td>${item.patient_id ?? ""}</td>
+                    <td>${item.date ?? ""}</td>
+                    <td>${item.time ?? ""}</td>
+                    <td>${item.reason ?? item.description ?? ""}</td>
+                    <td>${item.is_confirmed ? "Yes" : "No"}</td>
+                    <td>${item.google_event_id ?? ""}</td>
+                    <td class="row-actions">
+                        <button class="danger" data-cancel-id="${item.id}">Cancel</button>
+                    </td>
+                `;
+                appointmentsBody.appendChild(tr);
+            });
+            appointmentsBody.querySelectorAll("button[data-cancel-id]").forEach((btn) => {
+                btn.addEventListener("click", async () => {
+                    const id = btn.getAttribute("data-cancel-id");
+                    try {
+                        statusEl.textContent = `Cancelling appointment ${id}...`;
+                        await apiPost("/webhook", {
+                            user_id: "admin_dashboard",
+                            message: `cancel appointment ${id}`
+                        });
+                        await loadAppointments();
+                        statusEl.textContent = `Cancelled appointment ${id}`;
+                    } catch (err) {
+                        statusEl.textContent = `Cancel failed: ${err.message}`;
+                    }
+                });
+            });
+        }
+
+        function renderPatients(rows) {
+            patientsBody.innerHTML = "";
+            rows.forEach((item) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${item.id ?? ""}</td>
+                    <td>${item.name ?? ""}</td>
+                    <td>${item.phone_number ?? ""}</td>
+                    <td>${item.email ?? ""}</td>
+                `;
+                patientsBody.appendChild(tr);
+            });
+        }
+
+        async function loadAppointments() {
+            const data = await apiGet("/appointments");
+            renderAppointments(Array.isArray(data) ? data : []);
+        }
+
+        async function loadPatients() {
+            const data = await apiGet("/patients");
+            renderPatients(Array.isArray(data) ? data : []);
+        }
+
+        async function refreshAll() {
+            statusEl.textContent = "Refreshing data...";
+            await Promise.all([loadAppointments(), loadPatients()]);
+            statusEl.textContent = `Updated at ${new Date().toLocaleTimeString()}`;
+        }
+
+        document.getElementById("refreshAllBtn").addEventListener("click", refreshAll);
+        document.getElementById("refreshAppointmentsBtn").addEventListener("click", loadAppointments);
+        document.getElementById("refreshPatientsBtn").addEventListener("click", loadPatients);
+
+        (async () => {
+            try {
+                await authenticate();
+                await refreshAll();
+            } catch (err) {
+                statusEl.textContent = `Dashboard error: ${err.message}`;
+            }
+        })();
+    </script>
+</body>
+</html>

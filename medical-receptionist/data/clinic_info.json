@@ -1,0 +1,100 @@
+{
+    "clinic_name": "MediCare Dental & Medical Clinic",
+    "address": "123 Healthway, Wellness City, HW 54321",
+    "phone": "+1 (555) 123-4567",
+    "hours": {
+        "monday": "9:00 AM - 6:00 PM",
+        "tuesday": "9:00 AM - 6:00 PM",
+        "wednesday": "9:00 AM - 6:00 PM",
+        "thursday": "9:00 AM - 6:00 PM",
+        "friday": "9:00 AM - 6:00 PM",
+        "saturday": "10:00 AM - 3:00 PM",
+        "sunday": "Closed"
+    },
+    "services": [
+        {
+            "name": "Dental Check-up & Cleaning",
+            "price_range": "$100 - $150"
+        },
+        {
+            "name": "Teeth Whitening",
+            "price_range": "$300 - $500"
+        },
+        {
+            "name": "Cavity Filling",
+            "price_range": "$150 - $400"
+        },
+        {
+            "name": "Emergency Dental Care",
+            "price_range": "Starts at $200"
+        },
+        {
+            "name": "General Medical Consultation",
+            "price_range": "$80 - $120"
+        },
+        {
+            "name": "Vaccinations",
+            "price_range": "Varies by vaccine"
+        },
+        {
+            "name": "Physical Therapy",
+            "price_range": "$70 - $100 per session"
+        }
+    ],
+    "faqs": [
+        {
+            "question": "What are your clinic hours?",
+            "answer": "Our clinic hours are Monday to Friday, 9 AM to 6 PM, and Saturday from 10 AM to 3 PM. We are closed on Sundays."
+        },
+        {
+            "question": "Do you accept new patients?",
+            "answer": "Yes, we are always welcoming new patients! Please call us to schedule your first appointment."
+        },
+        {
+            "question": "Which insurance plans do you accept?",
+            "answer": "We accept a wide range of insurance plans. Please contact our front desk with your insurance details to confirm coverage."
+        },
+        {
+            "question": "How can I book an appointment?",
+            "answer": "You can book an appointment by calling us at +1 (555) 123-4567 or by speaking to our AI receptionist."
+        },
+        {
+            "question": "What should I bring to my first appointment?",
+            "answer": "Please bring your ID, insurance card, and a list of any medications you are currently taking."
+        },
+        {
+            "question": "Do you offer emergency services?",
+            "answer": "Yes, we offer emergency dental and medical care during our clinic hours. Please call us immediately if you have an emergency."
+        },
+        {
+            "question": "How can I cancel or reschedule an appointment?",
+            "answer": "You can cancel or reschedule by calling us at least 24 hours in advance. Our AI receptionist can also assist you."
+        },
+        {
+            "question": "What is the cost of a dental cleaning?",
+            "answer": "A standard dental check-up and cleaning typically ranges from $100 to $150, depending on individual needs."
+        },
+        {
+            "question": "Do you have pediatric dentists?",
+            "answer": "Yes, we have dentists who specialize in pediatric care, ensuring a comfortable visit for your children."
+        },
+        {
+            "question": "What payment methods do you accept?",
+            "answer": "We accept cash, major credit cards, and most insurance plans."
+        }
+    ],
+    "doctors": [
+        {
+            "name": "Dr. Emily White",
+            "specialty": "General Dentistry"
+        },
+        {
+            "name": "Dr. David Green",
+            "specialty": "Family Medicine"
+        },
+        {
+            "name": "Dr. Sarah Blue",
+            "specialty": "Orthodontics"
+        }
+    ]
+}
