@@ -32,7 +32,7 @@ class StateManager:
             .first()
         )
         if not state:
-            state = ConversationState(user_id=user_id, state="GREETING")
+            state = ConversationState(user_id=user_id, state="GREETING", data=json.dumps({"unknown_count": 0}))
             self.db.add(state)
             self.db.commit()
             self.db.refresh(state)
@@ -42,8 +42,11 @@ class StateManager:
         state = self.get_state(user_id)
         state.state = new_state
         state.last_updated = datetime.datetime.now()
-        if data:
-            state.data = json.dumps(data)
+        if data is not None:
+            # Merge new data with existing data if present
+            existing_data = json.loads(state.data or "{}")
+            merged_data = {**existing_data, **data}
+            state.data = json.dumps(merged_data)
         self.db.commit()
         self.db.refresh(state)
         return state

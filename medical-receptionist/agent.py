@@ -47,46 +47,47 @@ class Agent:
             except Exception as e:
                 logger.warning(f"Could not initialise Groq client: {e}")
 
-        self.system_prompt = """You are an AI medical receptionist for a dental/medical clinic. Your purpose is to assist patients with booking appointments, answering frequently asked questions, and managing cancellations. You should be polite, helpful, and efficient. You need to detect the user's language (English, Hindi, or Hinglish) and respond in the same language. Your responses should be structured as a JSON object with the following keys:
-            - "intent": One of "BOOKING", "FAQ", "CANCEL", "GREETING", "UNKNOWN"
-            - "response": The natural language response to the user.
-            - "data": A dictionary containing any extracted entities relevant to the intent (e.g., {"date": "2024-12-25", "time": "10:00 AM"} for BOOKING).
-            
-            For booking appointments, try to extract name, phone, date, time, and reason for the visit.
-            Phone should be plain text as spoken by user (the backend will normalize it).
-            For cancellations, try to extract appointment ID or relevant details to find the appointment.
-            For FAQ, provide concise and helpful answers based on the clinic information.
+        self.system_prompt = f"""You are Vaidya AI, an intelligent medical receptionist for 
+Indian dental and medical clinics. 
 
-            Example JSON response:
-            ```json
-            {
-                "intent": "BOOKING",
-                "response": "Certainly! What date and time would you like to book your appointment, and for what reason?",
-                "data": {}
-            }
-            ```
-            ```json
-            {
-                "intent": "FAQ",
-                "response": "Our clinic hours are Monday to Friday, 9 AM to 6 PM.",
-                "data": {}
-            }
-            ```
-            ```json
-            {
-                "intent": "GREETING",
-                "response": "Hello! Welcome to our clinic. How may I assist you today?",
-                "data": {}
-            }
-            ```
-            ```json
-            {
-                "intent": "UNKNOWN",
-                "response": "I'm sorry, I don't understand. Could you please rephrase your request?",
-                "data": {}
-            }
-            ```
-        """
+PERSONALITY:
+- Warm, professional, and empathetic
+- Respond in the SAME language as the patient
+  (English, Hindi, or Hinglish)
+- Keep responses concise — max 3 sentences
+- Never make up medical information
+
+YOUR CAPABILITIES:
+1. Book appointments (collect: name, phone, date, time, reason)
+2. Answer FAQs about clinic (use clinic_info only)
+3. Cancel/reschedule appointments
+4. Send reminders and follow-ups
+
+RESPONSE FORMAT (ALWAYS return valid JSON):
+{{
+  "intent": "BOOKING|FAQ|CANCEL|GREETING|UNKNOWN",
+  "response": "your message to patient",
+  "language": "en|hi|hinglish",
+  "confidence": 0.0-1.0,
+  "data": {{
+    "name": null,
+    "phone": null,
+    "date": null,
+    "time": null,
+    "reason": null
+  }}
+}}
+
+RULES:
+- If confidence < 0.6, set intent to UNKNOWN and ask to clarify
+- Never invent clinic information not in the context
+- Always collect name and phone before confirming booking
+- If patient seems distressed, respond with extra empathy
+- For UNKNOWN intent, ask ONE clarifying question only
+
+CLINIC CONTEXT:
+{json.dumps(self.clinic_info, indent=2)}
+"""
 
     @staticmethod
     def _load_clinic_info() -> dict:
@@ -124,12 +125,155 @@ class Agent:
             return json.loads(match.group())
         return json.loads(cleaned)
 
-    def generate_response(self, user_message: str) -> dict:
+    def extract_patient_data(self, message: str, history: list = None) -> dict:
+        if history is None:
+            history = []
+
+        name = None
+        phone = None
+        date = None
+        time = None
+        reason = None
+
+        # Regex for Indian phone numbers (10 digits, starting with 6-9)
+        phone_match = re.search(r"\b([6-9]\d{9})\b", message)
+        if phone_match:
+            phone = phone_match.group(1)
+
+        # NLP prompt to extract name from message
+        # This will be replaced by a more robust entity extraction system in future improvements
+        name_prompt = f"""Extract the patient's name from the following message. 
+        If no name is present, return null. Return only the name, no other text.
+        Message: """{message}"""
+        """
+        if self.gemini_client:
+            try:
+                response = self.gemini_client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=name_prompt,
+                )
+                extracted_name = response.text.strip()
+                if extracted_name and extracted_name.lower() != "null":
+                    name = extracted_name
+            except Exception as e:
+                logger.warning(f"Gemini name extraction failed: {e}")
+
+        # Simplified date, time, reason extraction (can be improved with more advanced NLP)
+        date_match = re.search(r"\b(today|tomorrow|\d{4}-\d{2}-\d{2})\b", message, re.IGNORECASE)
+        if date_match:
+            date = date_match.group(1)
+
+        time_match = re.search(r"\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\b", message, re.IGNORECASE)
+        if time_match:
+            time = time_match.group(1)
+
+        # Basic reason extraction (can be improved)
+        reason_match = re.search(r"for (\w[\w\s-]+)", message, re.IGNORECASE)
+        if reason_match:
+            reason = reason_match.group(1).strip()
+
+        return {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}
+
+
+    def generate_response(self, user_message: str, conversation_history: list = None) -> dict:
+        if conversation_history is None:
+            conversation_history = []
+
         detected_lang = self.detect_language(user_message)
 
+        # Regex for Indian phone numbers (10 digits, starting with 6-9)
+        phone_match = re.search(r"\b([6-9]\d{9})\b", message)
+        if phone_match:
+            phone = phone_match.group(1)
+
+        # NLP prompt to extract name from message
+        name_prompt = f"""Extract the patient's name from the following message. 
+        If no name is present, return null. Return only the name, no other text.
+        Message: """{message}"""
+        "
+        response = self.gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=name_prompt,
+        )
+        extracted_name = response.text.strip()
+        if extracted_name and extracted_name.lower() != "null":
+            name = extracted_name
+
+        # Use existing utility for date and time extraction
+        extracted_details = self.extract_booking_details_from_message(message)
+        date = extracted_details.get("date")
+        time = extracted_details.get("time")
+        reason = extracted_details.get("reason")
+
+        return {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}
+
+    def extract_booking_details_from_message(self, message: str) -> dict:
+        """Extract booking fields from common free-text patient replies, using regex for basic extraction."""
+        text = (message or "").strip()
+        lowered = text.lower()
+        details: dict[str, str] = {}
+
+        name_match = re.search(
+            r"\\b(?:my name is|name is|name)\\s+([a-z][a-z .\'-]{1,60}?)(?=\\s+(?:and|phone|number|mobile|want|for|at|on|tomorrow|today)\\b|$)",
+            lowered,
+            re.IGNORECASE,
+        )
+        if name_match:
+            details["name"] = " ".join(part.capitalize() for part in name_match.group(1).strip().split())
+
+        phone_match = re.search(
+            r"(?:\\+?\\d[\\d\\s-]{7,}\\d)",
+            text,
+        )
+        if phone_match:
+            details["phone"] = phone_match.group(0)
+
+        date_match = re.search(
+            r"\\b(today|tomorrow|tommorrow|\\d{4}-\\d{1,2}-\\d{1,2})\\b",
+            lowered,
+            re_IGNORECASE,
+        )
+        if date_match:
+            details["date"] = date_match.group(1)
+
+        time_match = re.search(r"\\b(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.)?)\\b", lowered, re_IGNORECASE)
+        if time_match:
+            details["time"] = time_match.group(1)
+
+        reason_match = re.search(
+            r"\\b(?:about|for|regarding|because of|consult about|consult for)\\s+([a-z][a-z .\'-]{1,80}?)(?=\\s+(?:on|at|today|tomorrow|tommorrow)\\b|$)",
+            lowered,
+            re_IGNORECASE,
+        )
+        if reason_match:
+            details["reason"] = reason_match.group(1).strip()
+        elif any(word in lowered for word in ["piles", "fever", "pain", "cough", "dermatologist", "consult"]):
+            symptom_match = re.search(r"\\b(?:piles|fever|pain|cough|dermatologist|consultation)\\b", lowered)
+            if symptom_match:
+                details["reason"] = symptom_match.group(0)
+
+        return {key: value for key, value in details.items() if value}
+
+
+    def generate_response(self, user_message: str, conversation_history: list = None) -> dict:
+        if conversation_history is None:
+            conversation_history = []
+
+        detected_lang = self.detect_language(user_message)
+
+        # Build conversation string from history (last 6 messages max)
+        history_string = ""
+        if conversation_history:
+            history_string = "Previous conversation:\n"
+            for msg in conversation_history[-6:]:
+                history_string += f"{msg['role'].capitalize()}: {msg['content']}\n"
+            history_string += "\n"
+
         full_prompt = (
-            f"{self.system_prompt}\nUser: {user_message}\n"
-            f"Respond in {detected_lang}. Ensure the output is a valid JSON object."
+            f"{self.system_prompt}\n"
+            f"{history_string}"
+            f"Current message: {user_message}\n\n"
+            f"Respond as Vaidya AI receptionist. Ensure the output is a valid JSON object."
         )
 
         # ---- Try Gemini first (new SDK) ----
@@ -140,7 +284,13 @@ class Agent:
                     model="gemini-2.0-flash",
                     contents=full_prompt,
                 )
-                return self._extract_json(response.text)
+                json_response = self._extract_json(response.text)
+                # Add language and confidence if missing (Gemini doesn't always provide)
+                if "language" not in json_response:
+                    json_response["language"] = detected_lang.lower()
+                if "confidence" not in json_response:
+                    json_response["confidence"] = 0.9 # Default high confidence for Gemini
+                return json_response
             except Exception as e:
                 logger.warning(f"Gemini failed: {e}. Falling back to Groq...")
 
@@ -156,13 +306,24 @@ class Agent:
                     model="llama-3.3-70b-versatile",
                     response_format={"type": "json_object"},
                 )
-                return json.loads(chat_completion.choices[0].message.content)
+                json_response = json.loads(chat_completion.choices[0].message.content)
+                # Add language and confidence if missing
+                if "language" not in json_response:
+                    json_response["language"] = detected_lang.lower()
+                if "confidence" not in json_response:
+                    json_response["confidence"] = 0.7 # Default confidence for Groq
+                return json_response
             except Exception as groq_e:
                 logger.error(f"Groq also failed: {groq_e}")
 
-        # ---- Both failed ----
-        logger.warning("Both AI services are unavailable; using local fallback response.")
-        return self._fallback_response(user_message)
+        # ---- Final Fallback (both failed) ----
+        logger.warning("Both AI services are unavailable; using hardcoded fallback response.")
+        return {
+            "intent": "UNKNOWN",
+            "response": "I\"m having trouble right now. Please call us directly or try again in a moment.",
+            "confidence": 0.0,
+            "data": {}
+        }
 
     def _fallback_response(self, user_message: str) -> dict:
         text = (user_message or "").strip().lower()
