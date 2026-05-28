@@ -1,0 +1,4338 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "agent.py",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L1",
+      "id": "agent_py",
+      "community": 7,
+      "norm_label": "agent.py"
+    },
+    {
+      "label": "Agent",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L29",
+      "id": "medical_receptionist_agent_agent",
+      "community": 7,
+      "norm_label": "agent"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L30",
+      "id": "medical_receptionist_agent_agent_init",
+      "community": 7,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": "._load_clinic_info()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L100",
+      "id": "medical_receptionist_agent_agent_load_clinic_info",
+      "community": 7,
+      "norm_label": "._load_clinic_info()"
+    },
+    {
+      "label": ".detect_language()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L108",
+      "id": "medical_receptionist_agent_agent_detect_language",
+      "community": 7,
+      "norm_label": ".detect_language()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L108",
+      "id": "agent_py_str",
+      "community": 7,
+      "norm_label": "str"
+    },
+    {
+      "label": "._extract_json()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L122",
+      "id": "medical_receptionist_agent_agent_extract_json",
+      "community": 7,
+      "norm_label": "._extract_json()"
+    },
+    {
+      "label": ".extract_patient_data()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L129",
+      "id": "medical_receptionist_agent_agent_extract_patient_data",
+      "community": 7,
+      "norm_label": ".extract_patient_data()"
+    },
+    {
+      "label": ".generate_response()",
+      "file_type": "code",
+      "source_file": "agent.py",
+      "source_location": "L174",
+      "id": "medical_receptionist_agent_agent_generate_response",
+      "community": 7,
+      "norm_label": ".generate_response()"
+    },
+    {
+      "label": "auth.py",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L1",
+      "id": "auth_py",
+      "community": 4,
+      "norm_label": "auth.py"
+    },
+    {
+      "label": "Token",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L21",
+      "id": "medical_receptionist_auth_token",
+      "community": 4,
+      "norm_label": "token"
+    },
+    {
+      "label": "BaseModel",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "basemodel",
+      "community": 4,
+      "norm_label": "basemodel"
+    },
+    {
+      "label": "TokenData",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L25",
+      "id": "medical_receptionist_auth_tokendata",
+      "community": 4,
+      "norm_label": "tokendata"
+    },
+    {
+      "label": "create_access_token()",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L28",
+      "id": "medical_receptionist_auth_create_access_token",
+      "community": 4,
+      "norm_label": "create_access_token()"
+    },
+    {
+      "label": "timedelta",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L28",
+      "id": "timedelta",
+      "community": 2,
+      "norm_label": "timedelta"
+    },
+    {
+      "label": "verify_token()",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L39",
+      "id": "medical_receptionist_auth_verify_token",
+      "community": 4,
+      "norm_label": "verify_token()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L39",
+      "id": "auth_py_str",
+      "community": 4,
+      "norm_label": "str"
+    },
+    {
+      "label": "get_current_user()",
+      "file_type": "code",
+      "source_file": "auth.py",
+      "source_location": "L51",
+      "id": "medical_receptionist_auth_get_current_user",
+      "community": 4,
+      "norm_label": "get_current_user()"
+    },
+    {
+      "label": "Creates an access token for authentication.",
+      "file_type": "rationale",
+      "source_file": "auth.py",
+      "source_location": "L29",
+      "id": "medical_receptionist_auth_rationale_29",
+      "community": 4,
+      "norm_label": "creates an access token for authentication."
+    },
+    {
+      "label": "Verifies the authenticity of a JWT token.",
+      "file_type": "rationale",
+      "source_file": "auth.py",
+      "source_location": "L40",
+      "id": "medical_receptionist_auth_rationale_40",
+      "community": 4,
+      "norm_label": "verifies the authenticity of a jwt token."
+    },
+    {
+      "label": "Fetches the current authenticated user based on the provided token.",
+      "file_type": "rationale",
+      "source_file": "auth.py",
+      "source_location": "L52",
+      "id": "medical_receptionist_auth_rationale_52",
+      "community": 4,
+      "norm_label": "fetches the current authenticated user based on the provided token."
+    },
+    {
+      "label": "calendar_service.py",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L1",
+      "id": "calendar_service_py",
+      "community": 5,
+      "norm_label": "calendar_service.py"
+    },
+    {
+      "label": "GoogleCalendarService",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L23",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice",
+      "community": 5,
+      "norm_label": "googlecalendarservice"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L24",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_init",
+      "community": 5,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": "._authenticate()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L33",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_authenticate",
+      "community": 5,
+      "norm_label": "._authenticate()"
+    },
+    {
+      "label": ".get_available_slots()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_get_available_slots",
+      "community": 5,
+      "norm_label": ".get_available_slots()"
+    },
+    {
+      "label": "date",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "id": "date",
+      "community": 5,
+      "norm_label": "date"
+    },
+    {
+      "label": "int",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "id": "calendar_service_py_int",
+      "community": 5,
+      "norm_label": "int"
+    },
+    {
+      "label": ".book_appointment()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_book_appointment",
+      "community": 5,
+      "norm_label": ".book_appointment()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "id": "calendar_service_py_str",
+      "community": 5,
+      "norm_label": "str"
+    },
+    {
+      "label": "datetime",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "id": "calendar_service_py_datetime",
+      "community": 5,
+      "norm_label": "datetime"
+    },
+    {
+      "label": ".cancel_appointment()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L175",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_cancel_appointment",
+      "community": 5,
+      "norm_label": ".cancel_appointment()"
+    },
+    {
+      "label": "bool",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L175",
+      "id": "calendar_service_py_bool",
+      "community": 5,
+      "norm_label": "bool"
+    },
+    {
+      "label": ".suggest_best_slot()",
+      "file_type": "code",
+      "source_file": "calendar_service.py",
+      "source_location": "L193",
+      "id": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "community": 5,
+      "norm_label": ".suggest_best_slot()"
+    },
+    {
+      "label": "check_db.py",
+      "file_type": "code",
+      "source_file": "check_db.py",
+      "source_location": "L1",
+      "id": "check_db_py",
+      "community": 12,
+      "norm_label": "check_db.py"
+    },
+    {
+      "label": "check_env.py",
+      "file_type": "code",
+      "source_file": "check_env.py",
+      "source_location": "L1",
+      "id": "check_env_py",
+      "community": 13,
+      "norm_label": "check_env.py"
+    },
+    {
+      "label": "database.py",
+      "file_type": "code",
+      "source_file": "database.py",
+      "source_location": "L1",
+      "id": "database_py",
+      "community": 10,
+      "norm_label": "database.py"
+    },
+    {
+      "label": "get_db()",
+      "file_type": "code",
+      "source_file": "database.py",
+      "source_location": "L30",
+      "id": "medical_receptionist_database_get_db",
+      "community": 10,
+      "norm_label": "get_db()"
+    },
+    {
+      "label": "main.py",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L1",
+      "id": "main_py",
+      "community": 0,
+      "norm_label": "main.py"
+    },
+    {
+      "label": "normalize_phone()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L52",
+      "id": "medical_receptionist_main_normalize_phone",
+      "community": 0,
+      "norm_label": "normalize_phone()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L52",
+      "id": "main_py_str",
+      "community": 0,
+      "norm_label": "str"
+    },
+    {
+      "label": "normalize_booking_date()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L63",
+      "id": "medical_receptionist_main_normalize_booking_date",
+      "community": 0,
+      "norm_label": "normalize_booking_date()"
+    },
+    {
+      "label": "normalize_booking_time()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L81",
+      "id": "medical_receptionist_main_normalize_booking_time",
+      "community": 0,
+      "norm_label": "normalize_booking_time()"
+    },
+    {
+      "label": "parse_booking_datetime()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L98",
+      "id": "medical_receptionist_main_parse_booking_datetime",
+      "community": 0,
+      "norm_label": "parse_booking_datetime()"
+    },
+    {
+      "label": "datetime",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L98",
+      "id": "main_py_datetime",
+      "community": 0,
+      "norm_label": "datetime"
+    },
+    {
+      "label": "is_confirmation_message()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L114",
+      "id": "medical_receptionist_main_is_confirmation_message",
+      "community": 0,
+      "norm_label": "is_confirmation_message()"
+    },
+    {
+      "label": "bool",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L114",
+      "id": "main_py_bool",
+      "community": 9,
+      "norm_label": "bool"
+    },
+    {
+      "label": "extract_appointment_id()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L129",
+      "id": "medical_receptionist_main_extract_appointment_id",
+      "community": 9,
+      "norm_label": "extract_appointment_id()"
+    },
+    {
+      "label": "int",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L129",
+      "id": "main_py_int",
+      "community": 9,
+      "norm_label": "int"
+    },
+    {
+      "label": "extract_booking_details()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L144",
+      "id": "medical_receptionist_main_extract_booking_details",
+      "community": 0,
+      "norm_label": "extract_booking_details()"
+    },
+    {
+      "label": "is_booking_message()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L192",
+      "id": "medical_receptionist_main_is_booking_message",
+      "community": 0,
+      "norm_label": "is_booking_message()"
+    },
+    {
+      "label": "missing_booking_fields()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L200",
+      "id": "medical_receptionist_main_missing_booking_fields",
+      "community": 0,
+      "norm_label": "missing_booking_fields()"
+    },
+    {
+      "label": "booking_summary()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L205",
+      "id": "medical_receptionist_main_booking_summary",
+      "community": 0,
+      "norm_label": "booking_summary()"
+    },
+    {
+      "label": "cancel_appointment_record()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "id": "medical_receptionist_main_cancel_appointment_record",
+      "community": 9,
+      "norm_label": "cancel_appointment_record()"
+    },
+    {
+      "label": "Session",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "id": "session",
+      "community": 2,
+      "norm_label": "session"
+    },
+    {
+      "label": "upsert_patient_from_data()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L224",
+      "id": "medical_receptionist_main_upsert_patient_from_data",
+      "community": 0,
+      "norm_label": "upsert_patient_from_data()"
+    },
+    {
+      "label": "create_appointment_from_booking_data()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L264",
+      "id": "medical_receptionist_main_create_appointment_from_booking_data",
+      "community": 0,
+      "norm_label": "create_appointment_from_booking_data()"
+    },
+    {
+      "label": "sync_appointment_to_google_calendar()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L329",
+      "id": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "community": 0,
+      "norm_label": "sync_appointment_to_google_calendar()"
+    },
+    {
+      "label": "WebhookRequest",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L365",
+      "id": "medical_receptionist_main_webhookrequest",
+      "community": 4,
+      "norm_label": "webhookrequest"
+    },
+    {
+      "label": ".ensure_user_identifier()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L371",
+      "id": "medical_receptionist_main_webhookrequest_ensure_user_identifier",
+      "community": 4,
+      "norm_label": ".ensure_user_identifier()"
+    },
+    {
+      "label": "StateResetRequest",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L379",
+      "id": "medical_receptionist_main_stateresetrequest",
+      "community": 2,
+      "norm_label": "stateresetrequest"
+    },
+    {
+      "label": "ensure_sqlite_schema_upgrades()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L386",
+      "id": "medical_receptionist_main_ensure_sqlite_schema_upgrades",
+      "community": 0,
+      "norm_label": "ensure_sqlite_schema_upgrades()"
+    },
+    {
+      "label": "startup_event()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L469",
+      "id": "medical_receptionist_main_startup_event",
+      "community": 0,
+      "norm_label": "startup_event()"
+    },
+    {
+      "label": "shutdown_event()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L475",
+      "id": "medical_receptionist_main_shutdown_event",
+      "community": 0,
+      "norm_label": "shutdown_event()"
+    },
+    {
+      "label": "health_check()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L484",
+      "id": "medical_receptionist_main_health_check",
+      "community": 0,
+      "norm_label": "health_check()"
+    },
+    {
+      "label": "serve_chat()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L489",
+      "id": "medical_receptionist_main_serve_chat",
+      "community": 0,
+      "norm_label": "serve_chat()"
+    },
+    {
+      "label": "serve_admin()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L495",
+      "id": "medical_receptionist_main_serve_admin",
+      "community": 0,
+      "norm_label": "serve_admin()"
+    },
+    {
+      "label": "get_all_appointments()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L501",
+      "id": "medical_receptionist_main_get_all_appointments",
+      "community": 2,
+      "norm_label": "get_all_appointments()"
+    },
+    {
+      "label": "TokenData",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L501",
+      "id": "tokendata",
+      "community": 2,
+      "norm_label": "tokendata"
+    },
+    {
+      "label": "get_all_patients()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L510",
+      "id": "medical_receptionist_main_get_all_patients",
+      "community": 2,
+      "norm_label": "get_all_patients()"
+    },
+    {
+      "label": "reset_user_state()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L519",
+      "id": "medical_receptionist_main_reset_user_state",
+      "community": 2,
+      "norm_label": "reset_user_state()"
+    },
+    {
+      "label": "get_slots()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L529",
+      "id": "medical_receptionist_main_get_slots",
+      "community": 0,
+      "norm_label": "get_slots()"
+    },
+    {
+      "label": "login_for_access_token()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "id": "medical_receptionist_main_login_for_access_token",
+      "community": 2,
+      "norm_label": "login_for_access_token()"
+    },
+    {
+      "label": "OAuth2PasswordRequestForm",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "id": "oauth2passwordrequestform",
+      "community": 2,
+      "norm_label": "oauth2passwordrequestform"
+    },
+    {
+      "label": "Depends",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "id": "depends",
+      "community": 2,
+      "norm_label": "depends"
+    },
+    {
+      "label": "webhook_receiver()",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "id": "medical_receptionist_main_webhook_receiver",
+      "community": 0,
+      "norm_label": "webhook_receiver()"
+    },
+    {
+      "label": "Request",
+      "file_type": "code",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "id": "request",
+      "community": 2,
+      "norm_label": "request"
+    },
+    {
+      "label": "Keep digits and leading + only for stable matching/storage.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L53",
+      "id": "medical_receptionist_main_rationale_53",
+      "community": 0,
+      "norm_label": "keep digits and leading + only for stable matching/storage."
+    },
+    {
+      "label": "Normalize natural date phrases to ISO date when possible.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L64",
+      "id": "medical_receptionist_main_rationale_64",
+      "community": 0,
+      "norm_label": "normalize natural date phrases to iso date when possible."
+    },
+    {
+      "label": "Normalize common time phrases while keeping them readable.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L82",
+      "id": "medical_receptionist_main_rationale_82",
+      "community": 0,
+      "norm_label": "normalize common time phrases while keeping them readable."
+    },
+    {
+      "label": "Parse booking date/time strings into a naive datetime for calendar creation.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L99",
+      "id": "medical_receptionist_main_rationale_99",
+      "community": 0,
+      "norm_label": "parse booking date/time strings into a naive datetime for calendar creation."
+    },
+    {
+      "label": "Extract appointment ID from structured data or free text.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L130",
+      "id": "medical_receptionist_main_rationale_130",
+      "community": 9,
+      "norm_label": "extract appointment id from structured data or free text."
+    },
+    {
+      "label": "Extract booking fields from common free-text patient replies.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L145",
+      "id": "medical_receptionist_main_rationale_145",
+      "community": 0,
+      "norm_label": "extract booking fields from common free-text patient replies."
+    },
+    {
+      "label": "Cancel appointment in local DB by ID.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L213",
+      "id": "medical_receptionist_main_rationale_213",
+      "community": 9,
+      "norm_label": "cancel appointment in local db by id."
+    },
+    {
+      "label": "Persist patient details when enough information is available.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L225",
+      "id": "medical_receptionist_main_rationale_225",
+      "community": 0,
+      "norm_label": "persist patient details when enough information is available."
+    },
+    {
+      "label": "Create a confirmed appointment row from collected booking data.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L265",
+      "id": "medical_receptionist_main_rationale_265",
+      "community": 0,
+      "norm_label": "create a confirmed appointment row from collected booking data."
+    },
+    {
+      "label": "Create Google Calendar event for appointment and persist event ID.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L330",
+      "id": "medical_receptionist_main_rationale_330",
+      "community": 0,
+      "norm_label": "create google calendar event for appointment and persist event id."
+    },
+    {
+      "label": "Apply lightweight SQLite column upgrades for existing local DBs.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L387",
+      "id": "medical_receptionist_main_rationale_387",
+      "community": 0,
+      "norm_label": "apply lightweight sqlite column upgrades for existing local dbs."
+    },
+    {
+      "label": "Serve the chat HTML UI directly.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L490",
+      "id": "medical_receptionist_main_rationale_490",
+      "community": 0,
+      "norm_label": "serve the chat html ui directly."
+    },
+    {
+      "label": "Serve the admin dashboard UI.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L496",
+      "id": "medical_receptionist_main_rationale_496",
+      "community": 0,
+      "norm_label": "serve the admin dashboard ui."
+    },
+    {
+      "label": "Authenticates a user and returns an access token.",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L554",
+      "id": "medical_receptionist_main_rationale_554",
+      "community": 2,
+      "norm_label": "authenticates a user and returns an access token."
+    },
+    {
+      "label": "Receives incoming webhook events (e.g., from a messaging platform).",
+      "file_type": "rationale",
+      "source_file": "main.py",
+      "source_location": "L581",
+      "id": "medical_receptionist_main_rationale_581",
+      "community": 0,
+      "norm_label": "receives incoming webhook events (e.g., from a messaging platform)."
+    },
+    {
+      "label": "models.py",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L1",
+      "id": "models_py",
+      "community": 8,
+      "norm_label": "models.py"
+    },
+    {
+      "label": "Patient",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L6",
+      "id": "medical_receptionist_models_patient",
+      "community": 8,
+      "norm_label": "patient"
+    },
+    {
+      "label": "Base",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "base",
+      "community": 8,
+      "norm_label": "base"
+    },
+    {
+      "label": "Appointment",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L18",
+      "id": "medical_receptionist_models_appointment",
+      "community": 8,
+      "norm_label": "appointment"
+    },
+    {
+      "label": "Conversation",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L40",
+      "id": "medical_receptionist_models_conversation",
+      "community": 8,
+      "norm_label": "conversation"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "models.py",
+      "source_location": "L53",
+      "id": "medical_receptionist_models_user",
+      "community": 8,
+      "norm_label": "user"
+    },
+    {
+      "label": "scheduler.py",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L1",
+      "id": "scheduler_py",
+      "community": 8,
+      "norm_label": "scheduler.py"
+    },
+    {
+      "label": "Scheduler",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L19",
+      "id": "medical_receptionist_scheduler_scheduler",
+      "community": 2,
+      "norm_label": "scheduler"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L20",
+      "id": "medical_receptionist_scheduler_scheduler_init",
+      "community": 2,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": "._create_db_tables()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L29",
+      "id": "medical_receptionist_scheduler_scheduler_create_db_tables",
+      "community": 2,
+      "norm_label": "._create_db_tables()"
+    },
+    {
+      "label": ".reminder_job()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L33",
+      "id": "medical_receptionist_scheduler_scheduler_reminder_job",
+      "community": 2,
+      "norm_label": ".reminder_job()"
+    },
+    {
+      "label": ".followup_job()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L74",
+      "id": "medical_receptionist_scheduler_scheduler_followup_job",
+      "community": 2,
+      "norm_label": ".followup_job()"
+    },
+    {
+      "label": ".start()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L114",
+      "id": "medical_receptionist_scheduler_scheduler_start",
+      "community": 2,
+      "norm_label": ".start()"
+    },
+    {
+      "label": ".shutdown()",
+      "file_type": "code",
+      "source_file": "scheduler.py",
+      "source_location": "L123",
+      "id": "medical_receptionist_scheduler_scheduler_shutdown",
+      "community": 2,
+      "norm_label": ".shutdown()"
+    },
+    {
+      "label": "state.py",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L1",
+      "id": "state_py",
+      "community": 6,
+      "norm_label": "state.py"
+    },
+    {
+      "label": "ConversationState",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L12",
+      "id": "medical_receptionist_state_conversationstate",
+      "community": 6,
+      "norm_label": "conversationstate"
+    },
+    {
+      "label": ".__repr__()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L20",
+      "id": "medical_receptionist_state_conversationstate_repr",
+      "community": 6,
+      "norm_label": ".__repr__()"
+    },
+    {
+      "label": "StateManager",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L24",
+      "id": "medical_receptionist_state_statemanager",
+      "community": 6,
+      "norm_label": "statemanager"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L25",
+      "id": "medical_receptionist_state_statemanager_init",
+      "community": 6,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": ".get_state()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L28",
+      "id": "medical_receptionist_state_statemanager_get_state",
+      "community": 6,
+      "norm_label": ".get_state()"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L28",
+      "id": "state_py_str",
+      "community": 6,
+      "norm_label": "str"
+    },
+    {
+      "label": ".set_state()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L41",
+      "id": "medical_receptionist_state_statemanager_set_state",
+      "community": 6,
+      "norm_label": ".set_state()"
+    },
+    {
+      "label": ".reset_state()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L54",
+      "id": "medical_receptionist_state_statemanager_reset_state",
+      "community": 6,
+      "norm_label": ".reset_state()"
+    },
+    {
+      "label": ".close()",
+      "file_type": "code",
+      "source_file": "state.py",
+      "source_location": "L63",
+      "id": "medical_receptionist_state_statemanager_close",
+      "community": 6,
+      "norm_label": ".close()"
+    },
+    {
+      "label": "test_api.py",
+      "file_type": "code",
+      "source_file": "test_api.py",
+      "source_location": "L1",
+      "id": "test_api_py",
+      "community": 11,
+      "norm_label": "test_api.py"
+    },
+    {
+      "label": "test()",
+      "file_type": "code",
+      "source_file": "test_api.py",
+      "source_location": "L9",
+      "id": "medical_receptionist_test_api_test",
+      "community": 11,
+      "norm_label": "test()"
+    },
+    {
+      "label": "clinic_info.json",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L1",
+      "id": "data_clinic_info_json",
+      "community": 3,
+      "norm_label": "clinic_info.json"
+    },
+    {
+      "label": "clinic_name",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L2",
+      "id": "data_clinic_info_clinic_name",
+      "community": 3,
+      "norm_label": "clinic_name"
+    },
+    {
+      "label": "address",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L3",
+      "id": "data_clinic_info_address",
+      "community": 3,
+      "norm_label": "address"
+    },
+    {
+      "label": "phone",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L4",
+      "id": "data_clinic_info_phone",
+      "community": 3,
+      "norm_label": "phone"
+    },
+    {
+      "label": "hours",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L5",
+      "id": "data_clinic_info_hours",
+      "community": 3,
+      "norm_label": "hours"
+    },
+    {
+      "label": "monday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L6",
+      "id": "data_clinic_info_hours_monday",
+      "community": 3,
+      "norm_label": "monday"
+    },
+    {
+      "label": "tuesday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L7",
+      "id": "data_clinic_info_hours_tuesday",
+      "community": 3,
+      "norm_label": "tuesday"
+    },
+    {
+      "label": "wednesday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L8",
+      "id": "data_clinic_info_hours_wednesday",
+      "community": 3,
+      "norm_label": "wednesday"
+    },
+    {
+      "label": "thursday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L9",
+      "id": "data_clinic_info_hours_thursday",
+      "community": 3,
+      "norm_label": "thursday"
+    },
+    {
+      "label": "friday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L10",
+      "id": "data_clinic_info_hours_friday",
+      "community": 3,
+      "norm_label": "friday"
+    },
+    {
+      "label": "saturday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L11",
+      "id": "data_clinic_info_hours_saturday",
+      "community": 3,
+      "norm_label": "saturday"
+    },
+    {
+      "label": "sunday",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L12",
+      "id": "data_clinic_info_hours_sunday",
+      "community": 3,
+      "norm_label": "sunday"
+    },
+    {
+      "label": "services",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L14",
+      "id": "data_clinic_info_services",
+      "community": 3,
+      "norm_label": "services"
+    },
+    {
+      "label": "faqs",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L44",
+      "id": "data_clinic_info_faqs",
+      "community": 3,
+      "norm_label": "faqs"
+    },
+    {
+      "label": "doctors",
+      "file_type": "code",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L86",
+      "id": "data_clinic_info_doctors",
+      "community": 3,
+      "norm_label": "doctors"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 1,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "Medical AI Receptionist",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "medical_receptionist_readme_medical_ai_receptionist",
+      "community": 1,
+      "norm_label": "medical ai receptionist"
+    },
+    {
+      "label": "Tech Stack",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L5",
+      "id": "medical_receptionist_readme_tech_stack",
+      "community": 1,
+      "norm_label": "tech stack"
+    },
+    {
+      "label": "Project Structure",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L16",
+      "id": "medical_receptionist_readme_project_structure",
+      "community": 1,
+      "norm_label": "project structure"
+    },
+    {
+      "label": "Setup Instructions",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L32",
+      "id": "medical_receptionist_readme_setup_instructions",
+      "community": 1,
+      "norm_label": "setup instructions"
+    },
+    {
+      "label": "1. Clone the repository",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L36",
+      "id": "medical_receptionist_readme_1_clone_the_repository",
+      "community": 1,
+      "norm_label": "1. clone the repository"
+    },
+    {
+      "label": "code:bash (git clone <repository_url>)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L38",
+      "id": "medical_receptionist_readme_codeblock_1",
+      "community": 1,
+      "norm_label": "code:bash (git clone <repository_url>)"
+    },
+    {
+      "label": "2. Create a Python Virtual Environment",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L43",
+      "id": "medical_receptionist_readme_2_create_a_python_virtual_environment",
+      "community": 1,
+      "norm_label": "2. create a python virtual environment"
+    },
+    {
+      "label": "code:bash (python -m venv venv)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L47",
+      "id": "medical_receptionist_readme_codeblock_2",
+      "community": 1,
+      "norm_label": "code:bash (python -m venv venv)"
+    },
+    {
+      "label": "3. Activate the Virtual Environment",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L51",
+      "id": "medical_receptionist_readme_3_activate_the_virtual_environment",
+      "community": 1,
+      "norm_label": "3. activate the virtual environment"
+    },
+    {
+      "label": "code:bash (.\\venv\\Scripts\\activate)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L54",
+      "id": "medical_receptionist_readme_codeblock_3",
+      "community": 1,
+      "norm_label": "code:bash (.\\venv\\scripts\\activate)"
+    },
+    {
+      "label": "code:bash (source venv/bin/activate)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L58",
+      "id": "medical_receptionist_readme_codeblock_4",
+      "community": 1,
+      "norm_label": "code:bash (source venv/bin/activate)"
+    },
+    {
+      "label": "4. Install Dependencies",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L62",
+      "id": "medical_receptionist_readme_4_install_dependencies",
+      "community": 1,
+      "norm_label": "4. install dependencies"
+    },
+    {
+      "label": "code:bash (pip install -r medical-receptionist/requirements.txt)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L64",
+      "id": "medical_receptionist_readme_codeblock_5",
+      "community": 1,
+      "norm_label": "code:bash (pip install -r medical-receptionist/requirements.txt)"
+    },
+    {
+      "label": "5. Google Calendar API Credentials (OAuth2)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L68",
+      "id": "medical_receptionist_readme_5_google_calendar_api_credentials_oauth2",
+      "community": 1,
+      "norm_label": "5. google calendar api credentials (oauth2)"
+    },
+    {
+      "label": "6. Set up Environment Variables",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L81",
+      "id": "medical_receptionist_readme_6_set_up_environment_variables",
+      "community": 1,
+      "norm_label": "6. set up environment variables"
+    },
+    {
+      "label": "code:bash (cp medical-receptionist/.env.example medical-receptionist/.e)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L85",
+      "id": "medical_receptionist_readme_codeblock_6",
+      "community": 1,
+      "norm_label": "code:bash (cp medical-receptionist/.env.example medical-receptionist/.e)"
+    },
+    {
+      "label": "code:block7 (GEMINI_API_KEY=\"YOUR_GEMINI_API_KEY\")",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L91",
+      "id": "medical_receptionist_readme_codeblock_7",
+      "community": 1,
+      "norm_label": "code:block7 (gemini_api_key=\"your_gemini_api_key\")"
+    },
+    {
+      "label": "7. Run the FastAPI Server",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L101",
+      "id": "medical_receptionist_readme_7_run_the_fastapi_server",
+      "community": 1,
+      "norm_label": "7. run the fastapi server"
+    },
+    {
+      "label": "code:bash (uvicorn medical-receptionist.main:app --reload)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L103",
+      "id": "medical_receptionist_readme_codeblock_8",
+      "community": 1,
+      "norm_label": "code:bash (uvicorn medical-receptionist.main:app --reload)"
+    },
+    {
+      "label": "8. Access the Chat UI",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L109",
+      "id": "medical_receptionist_readme_8_access_the_chat_ui",
+      "community": 1,
+      "norm_label": "8. access the chat ui"
+    },
+    {
+      "label": "code:block9 (http://127.0.0.1:8000/chat)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L113",
+      "id": "medical_receptionist_readme_codeblock_9",
+      "community": 1,
+      "norm_label": "code:block9 (http://127.0.0.1:8000/chat)"
+    },
+    {
+      "label": "9. Test with Swagger UI (API Documentation)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L119",
+      "id": "medical_receptionist_readme_9_test_with_swagger_ui_api_documentation",
+      "community": 1,
+      "norm_label": "9. test with swagger ui (api documentation)"
+    },
+    {
+      "label": "code:block10 (http://127.0.0.1:8000/docs)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L123",
+      "id": "medical_receptionist_readme_codeblock_10",
+      "community": 1,
+      "norm_label": "code:block10 (http://127.0.0.1:8000/docs)"
+    },
+    {
+      "label": "API Endpoints Reference",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L129",
+      "id": "medical_receptionist_readme_api_endpoints_reference",
+      "community": 1,
+      "norm_label": "api endpoints reference"
+    },
+    {
+      "label": "code:json ({)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L145",
+      "id": "medical_receptionist_readme_codeblock_11",
+      "community": 1,
+      "norm_label": "code:json ({)"
+    },
+    {
+      "label": "Scheduler Jobs",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L166",
+      "id": "medical_receptionist_readme_scheduler_jobs",
+      "community": 1,
+      "norm_label": "scheduler jobs"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "agent_py",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "depends",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "main_py_bool",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "main_py_datetime",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "main_py_int",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "main_py_str",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L108",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_detect_language",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_extract_json",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_extract_patient_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L174",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_generate_response",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L100",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent",
+      "target": "medical_receptionist_agent_agent_load_clinic_info",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_stateresetrequest",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "oauth2passwordrequestform",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "request",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "session",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L38",
+      "weight": 0.8,
+      "source": "tokendata",
+      "target": "medical_receptionist_agent_agent",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_init",
+      "target": "medical_receptionist_agent_agent_load_clinic_info",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L108",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_detect_language",
+      "target": "agent_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L178",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_generate_response",
+      "target": "medical_receptionist_agent_agent_detect_language",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L122",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_extract_json",
+      "target": "agent_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_extract_patient_data",
+      "target": "agent_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "agent.py",
+      "source_location": "L174",
+      "weight": 1.0,
+      "source": "medical_receptionist_agent_agent_generate_response",
+      "target": "agent_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "auth_py",
+      "target": "medical_receptionist_auth_create_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "auth_py",
+      "target": "medical_receptionist_auth_get_current_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "auth_py",
+      "target": "medical_receptionist_auth_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "auth_py",
+      "target": "medical_receptionist_auth_tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "auth_py",
+      "target": "medical_receptionist_auth_verify_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_token",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_tokendata",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L379",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_stateresetrequest",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L365",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "basemodel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_verify_token",
+      "target": "medical_receptionist_auth_tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_create_access_token",
+      "target": "timedelta",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_rationale_29",
+      "target": "medical_receptionist_auth_create_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "main.py",
+      "source_location": "L561",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_login_for_access_token",
+      "target": "timedelta"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "main.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_normalize_booking_date",
+      "target": "timedelta"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "scheduler.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler_reminder_job",
+      "target": "timedelta"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_get_current_user",
+      "target": "medical_receptionist_auth_verify_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_rationale_40",
+      "target": "medical_receptionist_auth_verify_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_verify_token",
+      "target": "auth_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_get_current_user",
+      "target": "auth_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "medical_receptionist_auth_rationale_52",
+      "target": "medical_receptionist_auth_get_current_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "calendar_service_py",
+      "target": "calendar_service_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "calendar_service_py",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "depends",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "main_py_bool",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "main_py_datetime",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "main_py_int",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "main_py_str",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_authenticate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_book_appointment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L175",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_cancel_appointment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_get_available_slots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_stateresetrequest",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "scheduler.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scheduler.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler_init",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "oauth2passwordrequestform",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "request",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "scheduler_py",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "session",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L40",
+      "weight": 0.8,
+      "source": "tokendata",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_init",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_authenticate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_get_available_slots",
+      "target": "calendar_service_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_get_available_slots",
+      "target": "date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L194",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "target": "medical_receptionist_calendar_service_googlecalendarservice_get_available_slots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "target": "date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "target": "calendar_service_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_book_appointment",
+      "target": "calendar_service_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_book_appointment",
+      "target": "calendar_service_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L175",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_cancel_appointment",
+      "target": "calendar_service_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L193",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_suggest_best_slot",
+      "target": "calendar_service_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "calendar_service.py",
+      "source_location": "L175",
+      "weight": 1.0,
+      "source": "medical_receptionist_calendar_service_googlecalendarservice_cancel_appointment",
+      "target": "calendar_service_py_bool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "database.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "database_py",
+      "target": "medical_receptionist_database_get_db",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "main_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L205",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_booking_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_cancel_appointment_record",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L264",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_create_appointment_from_booking_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L386",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_ensure_sqlite_schema_upgrades",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_extract_appointment_id",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L144",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_extract_booking_details",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L501",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_get_all_appointments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L510",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_get_all_patients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L529",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_get_slots",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L484",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_health_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_is_booking_message",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_is_confirmation_message",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_login_for_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_missing_booking_fields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_normalize_booking_date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_normalize_booking_time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_parse_booking_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L519",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_reset_user_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L495",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_serve_admin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L489",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_serve_chat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L475",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_shutdown_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L469",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_startup_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L379",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_stateresetrequest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L329",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L224",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_upsert_patient_from_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_webhook_receiver",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L365",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_main_webhookrequest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "main_py",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L207",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_booking_summary",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L267",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_create_appointment_from_booking_data",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L163",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_booking_details",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_normalize_phone",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_53",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L227",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_upsert_patient_from_data",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L721",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_normalize_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "main_py_str",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "main_py_str",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L205",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_booking_summary",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_appointment_id",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L144",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_booking_details",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L529",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_slots",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_is_booking_message",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_is_confirmation_message",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_missing_booking_fields",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_normalize_booking_date",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_normalize_booking_time",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_parse_booking_datetime",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L329",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "target": "main_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L268",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_create_appointment_from_booking_data",
+      "target": "medical_receptionist_main_normalize_booking_date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L171",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_booking_details",
+      "target": "medical_receptionist_main_normalize_booking_date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_64",
+      "target": "medical_receptionist_main_normalize_booking_date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L717",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_normalize_booking_date",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L175",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_booking_details",
+      "target": "medical_receptionist_main_normalize_booking_time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_82",
+      "target": "medical_receptionist_main_normalize_booking_time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L719",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_normalize_booking_time",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L98",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_parse_booking_datetime",
+      "target": "main_py_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_99",
+      "target": "medical_receptionist_main_parse_booking_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L343",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "target": "medical_receptionist_main_parse_booking_datetime",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "main_py_datetime",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "main_py_datetime",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_is_confirmation_message",
+      "target": "main_py_bool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L733",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_is_confirmation_message",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "main_py_bool",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "main_py_bool",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_cancel_appointment_record",
+      "target": "main_py_bool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_is_booking_message",
+      "target": "main_py_bool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_extract_appointment_id",
+      "target": "main_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L130",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_130",
+      "target": "medical_receptionist_main_extract_appointment_id",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "main_py_int",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "main_py_int",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_cancel_appointment_record",
+      "target": "main_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "return_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L264",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_create_appointment_from_booking_data",
+      "target": "main_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L329",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "target": "main_py_int",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L145",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_145",
+      "target": "medical_receptionist_main_extract_booking_details",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L694",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_extract_booking_details",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L701",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_is_booking_message",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L751",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_missing_booking_fields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L771",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_booking_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L212",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_cancel_appointment_record",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L213",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_213",
+      "target": "medical_receptionist_main_cancel_appointment_record",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L264",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_create_appointment_from_booking_data",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L501",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_all_appointments",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L510",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_all_patients",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_login_for_access_token",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L329",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L224",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_upsert_patient_from_data",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "session",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "session",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L225",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_225",
+      "target": "medical_receptionist_main_upsert_patient_from_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L724",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_upsert_patient_from_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L265",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_265",
+      "target": "medical_receptionist_main_create_appointment_from_booking_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L736",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_create_appointment_from_booking_data",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L330",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_330",
+      "target": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L739",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_sync_appointment_to_google_calendar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "medical_receptionist_main_webhookrequest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L371",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "medical_receptionist_main_webhookrequest_ensure_user_identifier",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_webhookrequest",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L519",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_reset_user_state",
+      "target": "medical_receptionist_main_stateresetrequest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_stateresetrequest",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "medical_receptionist_main_stateresetrequest",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L387",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_387",
+      "target": "medical_receptionist_main_ensure_sqlite_schema_upgrades",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L490",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_490",
+      "target": "medical_receptionist_main_serve_chat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L496",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_496",
+      "target": "medical_receptionist_main_serve_admin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L501",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_all_appointments",
+      "target": "tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L510",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_all_patients",
+      "target": "tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L529",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_get_slots",
+      "target": "tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L519",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_reset_user_state",
+      "target": "tokendata",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "tokendata",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "tokendata",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_login_for_access_token",
+      "target": "depends",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L550",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_login_for_access_token",
+      "target": "oauth2passwordrequestform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L554",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_554",
+      "target": "medical_receptionist_main_login_for_access_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "oauth2passwordrequestform",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "oauth2passwordrequestform",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "depends",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "depends",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L581",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_rationale_581",
+      "target": "medical_receptionist_main_webhook_receiver",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "main.py",
+      "source_location": "L576",
+      "weight": 1.0,
+      "source": "medical_receptionist_main_webhook_receiver",
+      "target": "request",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L41",
+      "weight": 0.8,
+      "source": "request",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "main.py",
+      "source_location": "L39",
+      "weight": 0.8,
+      "source": "request",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "models_py",
+      "target": "medical_receptionist_models_appointment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "models_py",
+      "target": "medical_receptionist_models_conversation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "models_py",
+      "target": "medical_receptionist_models_patient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "models_py",
+      "target": "medical_receptionist_models_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "medical_receptionist_models_patient",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "medical_receptionist_models_appointment",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "medical_receptionist_models_conversation",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "models.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "medical_receptionist_models_user",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_conversationstate",
+      "target": "base",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "scheduler.py",
+      "source_location": "L10",
+      "weight": 0.8,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_models_appointment",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "scheduler_py",
+      "target": "medical_receptionist_models_appointment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "scheduler_py",
+      "target": "medical_receptionist_scheduler_scheduler",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_create_db_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_followup_job",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_reminder_job",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_shutdown",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler",
+      "target": "medical_receptionist_scheduler_scheduler_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "scheduler.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "medical_receptionist_scheduler_scheduler_init",
+      "target": "medical_receptionist_scheduler_scheduler_create_db_tables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "state_py",
+      "target": "medical_receptionist_state_conversationstate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "state_py",
+      "target": "medical_receptionist_state_statemanager",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_conversationstate",
+      "target": "medical_receptionist_state_conversationstate_repr",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_get_state",
+      "target": "medical_receptionist_state_conversationstate",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager",
+      "target": "medical_receptionist_state_statemanager_close",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager",
+      "target": "medical_receptionist_state_statemanager_get_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager",
+      "target": "medical_receptionist_state_statemanager_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager",
+      "target": "medical_receptionist_state_statemanager_reset_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager",
+      "target": "medical_receptionist_state_statemanager_set_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_get_state",
+      "target": "state_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_reset_state",
+      "target": "medical_receptionist_state_statemanager_get_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_set_state",
+      "target": "medical_receptionist_state_statemanager_get_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_reset_state",
+      "target": "state_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "state.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "medical_receptionist_state_statemanager_set_state",
+      "target": "state_py_str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "test_api.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "test_api_py",
+      "target": "medical_receptionist_test_api_test",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_address",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_clinic_name",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L86",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_doctors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_faqs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_hours",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_phone",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "data_clinic_info_json",
+      "target": "data_clinic_info_services",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_friday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_monday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_saturday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_sunday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_thursday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_tuesday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "data/clinic_info.json",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "data_clinic_info_hours",
+      "target": "data_clinic_info_hours_wednesday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "medical_receptionist_readme_medical_ai_receptionist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L129",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_medical_ai_receptionist",
+      "target": "medical_receptionist_readme_api_endpoints_reference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_medical_ai_receptionist",
+      "target": "medical_receptionist_readme_project_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L166",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_medical_ai_receptionist",
+      "target": "medical_receptionist_readme_scheduler_jobs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_medical_ai_receptionist",
+      "target": "medical_receptionist_readme_setup_instructions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_medical_ai_receptionist",
+      "target": "medical_receptionist_readme_tech_stack",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_1_clone_the_repository",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_2_create_a_python_virtual_environment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_3_activate_the_virtual_environment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_4_install_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_5_google_calendar_api_credentials_oauth2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_6_set_up_environment_variables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_7_run_the_fastapi_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L109",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_8_access_the_chat_ui",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L119",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_setup_instructions",
+      "target": "medical_receptionist_readme_9_test_with_swagger_ui_api_documentation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_1_clone_the_repository",
+      "target": "medical_receptionist_readme_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_2_create_a_python_virtual_environment",
+      "target": "medical_receptionist_readme_codeblock_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_3_activate_the_virtual_environment",
+      "target": "medical_receptionist_readme_codeblock_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_3_activate_the_virtual_environment",
+      "target": "medical_receptionist_readme_codeblock_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L64",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_4_install_dependencies",
+      "target": "medical_receptionist_readme_codeblock_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L85",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_6_set_up_environment_variables",
+      "target": "medical_receptionist_readme_codeblock_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_6_set_up_environment_variables",
+      "target": "medical_receptionist_readme_codeblock_7",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_7_run_the_fastapi_server",
+      "target": "medical_receptionist_readme_codeblock_8",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L113",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_8_access_the_chat_ui",
+      "target": "medical_receptionist_readme_codeblock_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_9_test_with_swagger_ui_api_documentation",
+      "target": "medical_receptionist_readme_codeblock_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L145",
+      "weight": 1.0,
+      "source": "medical_receptionist_readme_api_endpoints_reference",
+      "target": "medical_receptionist_readme_codeblock_11",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "7abff32a3e929b855a787def2fc0f4b91ea3f6f9"
+}

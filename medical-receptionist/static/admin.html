@@ -1,204 +1,231 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html class="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vaidya AI Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0b1220;
-            --panel: #121a2b;
-            --panel-2: #1a2440;
-            --text: #e6edf7;
-            --muted: #9fb0cf;
-            --brand: #2ec4b6;
-            --danger: #ff6b6b;
-            --border: #2d3a58;
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        * { box-sizing: border-box; }
         body {
-            margin: 0;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: radial-gradient(1200px 500px at 20% -10%, #1a2a4d, transparent), var(--bg);
-            color: var(--text);
+            background-color: #051424;
+            color: #d4e4fa;
+            font-family: 'Inter', sans-serif;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
+        .glass-surface {
+            background: rgba(18, 33, 49, 0.72);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
+        .sidebar-glass {
+            background: rgba(13, 28, 45, 0.78);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .title {
-            font-size: 24px;
-            font-weight: 700;
-        }
-        .status {
-            color: var(--muted);
-            font-size: 14px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        .card {
-            background: linear-gradient(180deg, var(--panel), var(--panel-2));
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 14px;
-            overflow: hidden;
-        }
-        .card h2 {
-            margin: 0 0 10px;
-            font-size: 18px;
-        }
-        .actions {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        button {
-            border: 1px solid var(--border);
-            background: #223150;
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        button.primary {
-            background: var(--brand);
-            border-color: transparent;
-            color: #06231f;
-            font-weight: 700;
-        }
-        button.danger {
-            background: var(--danger);
-            border-color: transparent;
-            color: #2c0a0a;
-            font-weight: 700;
-        }
-        .table-wrap {
-            overflow-x: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 540px;
-            font-size: 13px;
-        }
-        th, td {
-            border-bottom: 1px solid var(--border);
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-        th {
-            background: #1b2a47;
-            color: #b9c8e6;
-            position: sticky;
-            top: 0;
-        }
-        .row-actions {
-            display: flex;
-            gap: 6px;
-        }
-        .muted {
-            color: var(--muted);
-            font-size: 12px;
-        }
-        @media (max-width: 900px) {
-            .grid { grid-template-columns: 1fr; }
+        .active-glow {
+            box-shadow: 0 0 15px rgba(76, 215, 246, 0.2);
         }
     </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                      background: "#051424",
+                      surface: "#122131",
+                      "on-surface": "#d4e4fa",
+                      primary: "#4cd7f6",
+                      secondary: "#d0bcff",
+                      "surface-variant": "#273647",
+                      "primary-container": "#06b6d4",
+                      "on-primary-container": "#003640",
+                      outline: "#869397"
+              },
+              borderRadius: {
+                      xl: "0.75rem",
+                      "2xl": "1rem"
+              }
+            },
+          },
+        }
+    </script>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
+<body class="flex min-h-screen">
+    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-low/70 backdrop-blur-xl border-r border-white/10 shadow-xl flex flex-col p-6 gap-4 z-50 hidden md:flex">
+        <div class="font-headline-lg text-primary mb-8 flex items-center gap-3">
+            <span class="material-symbols-outlined text-4xl">clinical_notes</span>
+            <span class="font-display-lg text-headline-lg">Vaidya AI</span>
+        </div>
+        <nav class="flex-grow space-y-2">
+            <a class="flex items-center gap-4 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold active-glow transition-all duration-200" href="#">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span class="font-body-lg">Dashboard</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
+                <span class="material-symbols-outlined">calendar_today</span>
+                <span class="font-body-lg">Appointments</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
+                <span class="material-symbols-outlined">person</span>
+                <span class="font-body-lg">Patients</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
+                <span class="material-symbols-outlined">analytics</span>
+                <span class="font-body-lg">Analytics</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="font-body-lg">Settings</span>
+            </a>
+        </nav>
+        <div class="mt-auto border-t border-white/5 pt-4 space-y-2">
+            <div class="flex items-center gap-3 mb-6 px-4">
+                <div class="relative">
+                    <img alt="Clinic Admin Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-surface"></span>
+                </div>
+                <div>
+                    <p class="font-title-md text-on-surface text-sm">City Clinic</p>
+                    <p class="font-body-sm text-primary text-xs">Online</p>
+                </div>
+            </div>
+            <a class="flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined">help</span>
+                <span class="font-body-lg">Help</span>
+            </a>
+            <a class="flex items-center gap-4 px-4 py-2 text-error hover:bg-error-container/20 rounded-xl transition-all" href="#">
+                <span class="material-symbols-outlined">logout</span>
+                <span class="font-body-lg">Logout</span>
+            </a>
+        </div>
+    </aside>
+    <main class="flex-grow md:ml-[280px] p-4 md:p-8 pb-24 bg-background">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-                <div class="title">Vaidya AI Admin Dashboard</div>
-                <div class="status" id="status">Connecting...</div>
+                <h1 class="text-3xl font-bold text-on-surface">Clinic Overview</h1>
+                <p class="text-on-surface-variant mt-1">Real-time operational insights</p>
             </div>
-            <div class="actions">
-                <button class="primary" id="refreshAllBtn">Refresh All</button>
+            <div class="flex items-center gap-3">
+                <button class="bg-surface-variant/50 p-3 rounded-2xl text-primary hover:bg-surface-variant transition"> 
+                    <span class="material-symbols-outlined">language</span>
+                </button>
+                <button class="bg-primary px-6 py-3 rounded-2xl text-on-primary font-bold shadow-lg hover:brightness-110 transition">+ New Appointment</button>
+            </div>
+        </header>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="glass-surface p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="material-symbols-outlined text-primary">event_available</span>
+                    <span class="text-primary font-bold text-xs bg-primary/10 px-2 py-1 rounded-full">↑12%</span>
+                </div>
+                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Total Appointments</p>
+                <h2 class="text-3xl font-bold">24</h2>
+            </div>
+            <div class="glass-surface p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="material-symbols-outlined text-secondary">forum</span>
+                    <span class="text-secondary font-bold text-xs bg-secondary/10 px-2 py-1 rounded-full">Live</span>
+                </div>
+                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Active Conversations</p>
+                <h2 class="text-3xl font-bold">5</h2>
+            </div>
+            <div class="glass-surface p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="material-symbols-outlined text-error">cancel</span>
+                    <span class="text-error font-bold text-xs bg-error/10 px-2 py-1 rounded-full">-2</span>
+                </div>
+                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Cancellations</p>
+                <h2 class="text-3xl font-bold">2</h2>
+            </div>
+            <div class="glass-surface p-6 rounded-2xl border border-primary/20">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="material-symbols-outlined text-primary">psychology</span>
+                    <span class="text-primary-container font-bold text-xs bg-primary-container/20 px-2 py-1 rounded-full">Optimal</span>
+                </div>
+                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">AI Confidence</p>
+                <h2 class="text-3xl font-bold text-primary">98%</h2>
             </div>
         </div>
-
-        <div class="grid">
-            <section class="card">
-                <h2>Appointments</h2>
-                <div class="actions">
-                    <button id="refreshAppointmentsBtn">Refresh Appointments</button>
+        <div class="grid grid-cols-1 xl:grid-cols-[1.8fr_1.2fr] gap-6">
+            <section class="glass-surface rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-semibold text-on-surface">Appointments</h2>
+                        <p class="text-on-surface-variant text-sm">Current appointment list with cancel actions.</p>
+                    </div>
+                    <button id="refreshAppointmentsBtn" class="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm hover:bg-primary/20 transition">Refresh</button>
                 </div>
-                <div class="table-wrap">
-                    <table id="appointmentsTable">
-                        <thead>
+                <div class="overflow-x-auto rounded-xl border border-white/10">
+                    <table id="appointmentsTable" class="min-w-full text-left text-sm text-on-surface">
+                        <thead class="bg-surface-variant/70 text-on-surface-variant text-[11px] uppercase tracking-[0.16em]">
                             <tr>
-                                <th>ID</th>
-                                <th>Patient ID</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Reason</th>
-                                <th>Confirmed</th>
-                                <th>Google Event</th>
-                                <th>Actions</th>
+                                <th class="px-4 py-3">ID</th>
+                                <th class="px-4 py-3">Patient</th>
+                                <th class="px-4 py-3">Date</th>
+                                <th class="px-4 py-3">Time</th>
+                                <th class="px-4 py-3">Reason</th>
+                                <th class="px-4 py-3">Confirmed</th>
+                                <th class="px-4 py-3">Google Event</th>
+                                <th class="px-4 py-3">Actions</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody class="divide-y divide-white/10"></tbody>
                     </table>
                 </div>
             </section>
-
-            <section class="card">
-                <h2>Patients</h2>
-                <div class="actions">
-                    <button id="refreshPatientsBtn">Refresh Patients</button>
+            <section class="glass-surface rounded-2xl p-6 flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-semibold text-on-surface">Patients</h2>
+                        <p class="text-on-surface-variant text-sm">Latest patient records loaded from the backend.</p>
+                    </div>
+                    <button id="refreshPatientsBtn" class="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm hover:bg-primary/20 transition">Refresh</button>
                 </div>
-                <div class="table-wrap">
-                    <table id="patientsTable">
-                        <thead>
+                <div class="overflow-x-auto rounded-xl border border-white/10 flex-1">
+                    <table id="patientsTable" class="min-w-full text-left text-sm text-on-surface">
+                        <thead class="bg-surface-variant/70 text-on-surface-variant text-[11px] uppercase tracking-[0.16em]">
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Email</th>
+                                <th class="px-4 py-3">ID</th>
+                                <th class="px-4 py-3">Name</th>
+                                <th class="px-4 py-3">Phone</th>
+                                <th class="px-4 py-3">Email</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
+                        <tbody class="divide-y divide-white/10"></tbody>
                     </table>
                 </div>
             </section>
         </div>
-        <p class="muted">Tip: Cancel button sends a webhook message `cancel appointment &lt;id&gt;` as admin helper.</p>
-    </div>
-
+    </main>
     <script>
         let jwtToken = null;
-        const statusEl = document.getElementById("status");
-        const appointmentsBody = document.querySelector("#appointmentsTable tbody");
-        const patientsBody = document.querySelector("#patientsTable tbody");
+        const statusEl = document.createElement('div');
+        statusEl.className = 'fixed top-20 right-6 text-sm text-on-surface-variant bg-surface/80 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 shadow-lg';
+        statusEl.textContent = 'Connecting...';
+        document.body.appendChild(statusEl);
+
+        const appointmentsBody = document.querySelector('#appointmentsTable tbody');
+        const patientsBody = document.querySelector('#patientsTable tbody');
 
         async function authenticate() {
-            const response = await fetch("/auth/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: "username=admin&password=password"
+            const response = await fetch('/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'username=admin&password=password'
             });
-            if (!response.ok) throw new Error("Auth failed");
+            if (!response.ok) throw new Error('Auth failed');
             const data = await response.json();
             jwtToken = data.access_token;
         }
 
         async function apiGet(url) {
             const response = await fetch(url, {
-                headers: { "Authorization": `Bearer ${jwtToken}` }
+                headers: { 'Authorization': `Bearer ${jwtToken}` }
             });
             if (!response.ok) throw new Error(`${url} failed (${response.status})`);
             return response.json();
@@ -206,10 +233,10 @@
 
         async function apiPost(url, payload) {
             const response = await fetch(url, {
-                method: "POST",
+                method: 'POST',
                 headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${jwtToken}`
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`
                 },
                 body: JSON.stringify(payload)
             });
@@ -218,30 +245,29 @@
         }
 
         function renderAppointments(rows) {
-            appointmentsBody.innerHTML = "";
+            appointmentsBody.innerHTML = '';
             rows.forEach((item) => {
-                const tr = document.createElement("tr");
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 transition-colors';
                 tr.innerHTML = `
-                    <td>${item.id ?? ""}</td>
-                    <td>${item.patient_id ?? ""}</td>
-                    <td>${item.date ?? ""}</td>
-                    <td>${item.time ?? ""}</td>
-                    <td>${item.reason ?? item.description ?? ""}</td>
-                    <td>${item.is_confirmed ? "Yes" : "No"}</td>
-                    <td>${item.google_event_id ?? ""}</td>
-                    <td class="row-actions">
-                        <button class="danger" data-cancel-id="${item.id}">Cancel</button>
-                    </td>
+                    <td class="px-4 py-3">${item.id ?? ''}</td>
+                    <td class="px-4 py-3">${item.patient_id ?? ''}</td>
+                    <td class="px-4 py-3">${item.date ?? ''}</td>
+                    <td class="px-4 py-3">${item.time ?? ''}</td>
+                    <td class="px-4 py-3">${item.reason ?? item.description ?? ''}</td>
+                    <td class="px-4 py-3">${item.is_confirmed ? 'Yes' : 'No'}</td>
+                    <td class="px-4 py-3">${item.google_event_id ?? ''}</td>
+                    <td class="px-4 py-3"><button class="bg-error/10 text-error text-xs px-3 py-1 rounded-full" data-cancel-id="${item.id}">Cancel</button></td>
                 `;
                 appointmentsBody.appendChild(tr);
             });
-            appointmentsBody.querySelectorAll("button[data-cancel-id]").forEach((btn) => {
-                btn.addEventListener("click", async () => {
-                    const id = btn.getAttribute("data-cancel-id");
+            appointmentsBody.querySelectorAll('button[data-cancel-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.getAttribute('data-cancel-id');
                     try {
                         statusEl.textContent = `Cancelling appointment ${id}...`;
-                        await apiPost("/webhook", {
-                            user_id: "admin_dashboard",
+                        await apiPost('/webhook', {
+                            user_id: 'admin_dashboard',
                             message: `cancel appointment ${id}`
                         });
                         await loadAppointments();
@@ -254,38 +280,38 @@
         }
 
         function renderPatients(rows) {
-            patientsBody.innerHTML = "";
+            patientsBody.innerHTML = '';
             rows.forEach((item) => {
-                const tr = document.createElement("tr");
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 transition-colors';
                 tr.innerHTML = `
-                    <td>${item.id ?? ""}</td>
-                    <td>${item.name ?? ""}</td>
-                    <td>${item.phone_number ?? ""}</td>
-                    <td>${item.email ?? ""}</td>
+                    <td class="px-4 py-3">${item.id ?? ''}</td>
+                    <td class="px-4 py-3">${item.name ?? ''}</td>
+                    <td class="px-4 py-3">${item.phone_number ?? ''}</td>
+                    <td class="px-4 py-3">${item.email ?? ''}</td>
                 `;
                 patientsBody.appendChild(tr);
             });
         }
 
         async function loadAppointments() {
-            const data = await apiGet("/appointments");
+            const data = await apiGet('/appointments');
             renderAppointments(Array.isArray(data) ? data : []);
         }
 
         async function loadPatients() {
-            const data = await apiGet("/patients");
+            const data = await apiGet('/patients');
             renderPatients(Array.isArray(data) ? data : []);
         }
 
         async function refreshAll() {
-            statusEl.textContent = "Refreshing data...";
+            statusEl.textContent = 'Refreshing data...';
             await Promise.all([loadAppointments(), loadPatients()]);
             statusEl.textContent = `Updated at ${new Date().toLocaleTimeString()}`;
         }
 
-        document.getElementById("refreshAllBtn").addEventListener("click", refreshAll);
-        document.getElementById("refreshAppointmentsBtn").addEventListener("click", loadAppointments);
-        document.getElementById("refreshPatientsBtn").addEventListener("click", loadPatients);
+        document.getElementById('refreshAppointmentsBtn').addEventListener('click', loadAppointments);
+        document.getElementById('refreshPatientsBtn').addEventListener('click', loadPatients);
 
         (async () => {
             try {

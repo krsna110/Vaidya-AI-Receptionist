@@ -20,7 +20,7 @@ class Appointment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
-    start_time = Column(DateTime, default=datetime.datetime.utcnow)
+    start_time = Column(DateTime, default=datetime.datetime.now)
     end_time = Column(DateTime)
     description = Column(String, index=True)
     is_confirmed = Column(Boolean, default=False)
@@ -42,8 +42,19 @@ class Conversation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    session_id = Column(String, index=True, nullable=True)
+    timestamp = Column(DateTime, default=datetime.datetime.now)
+    sender_type = Column(String, nullable=True)  # 'USER' or 'AI'
     speaker = Column(String)  # 'patient' or 'receptionist'
     message = Column(Text)
 
     patient = relationship("Patient", back_populates="conversations")
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.now)

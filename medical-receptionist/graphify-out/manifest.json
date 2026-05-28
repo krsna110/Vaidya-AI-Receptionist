@@ -1,0 +1,87 @@
+{
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\agent.py": {
+    "mtime": 1779889552.5669763,
+    "ast_hash": "3d663389453925e977fdfd18a2691248",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\auth.py": {
+    "mtime": 1779012749.8620315,
+    "ast_hash": "aac44e20df15ca2ad98aa4a2a0a3f622",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\calendar_service.py": {
+    "mtime": 1779013333.4732516,
+    "ast_hash": "1c094b358fab681b9bf6e42189df2691",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\check_db.py": {
+    "mtime": 1779887031.5797403,
+    "ast_hash": "defb100045ffed7da26adbbf3cc8c26b",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\check_env.py": {
+    "mtime": 1779887014.52238,
+    "ast_hash": "73bcd10449d8086bcc9be62e403edf70",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\database.py": {
+    "mtime": 1779013352.8383267,
+    "ast_hash": "98e57cf59e99554103bf66ff41b454f8",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\main.py": {
+    "mtime": 1779889552.0393612,
+    "ast_hash": "1e5cd83a3f352d73ba731af6f2d1ee9d",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\models.py": {
+    "mtime": 1779889904.6929307,
+    "ast_hash": "75f8cbd70fe99dbcc1a66880a93ad5d7",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\scheduler.py": {
+    "mtime": 1779012783.8718133,
+    "ast_hash": "9f5005b05905148ccbd560325bd7213f",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\state.py": {
+    "mtime": 1779811512.8404953,
+    "ast_hash": "cd5fc306ae3fe91aab3923c8436636f4",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\test_api.py": {
+    "mtime": 1779887702.6276,
+    "ast_hash": "cf46e19b01e25e3165fac72b74e38a72",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\data\\clinic_info.json": {
+    "mtime": 1778796217.2831154,
+    "ast_hash": "9d6fb1b29ee5ad1456fc23aa27b1ab2a",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\README.md": {
+    "mtime": 1778907165.665138,
+    "ast_hash": "8a57f6be7d8a1d88740fab1a24dc2c47",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\requirements.txt": {
+    "mtime": 1779886040.6632657,
+    "ast_hash": "955b1bc6236d427deeeb187a39303c87",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\runtime.txt": {
+    "mtime": 1779013346.591166,
+    "ast_hash": "c7a7c7a69332debc92c10e640991d728",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\static\\admin.html": {
+    "mtime": 1779008767.1160064,
+    "ast_hash": "200e62624aee2fcca601ee80c98ed59e",
+    "semantic_hash": ""
+  },
+  "C:\\Users\\krish\\Downloads\\Ai chat system\\medical-receptionist\\static\\chat.html": {
+    "mtime": 1778907121.0632937,
+    "ast_hash": "7268f029d01f9d3877cb42628ec6525f",
+    "semantic_hash": ""
+  }
+}
