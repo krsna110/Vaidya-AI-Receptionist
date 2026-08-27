@@ -8,7 +8,9 @@ os.environ.setdefault("ADMIN_PASSWORD", "test-password")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 
 from fastapi.testclient import TestClient
-from main import app, agent
+from main import app, agent, is_within_clinic_hours, normalize_booking_date, normalize_booking_time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 class HardeningTests(unittest.TestCase):
@@ -37,6 +39,19 @@ class HardeningTests(unittest.TestCase):
             self.assertEqual(response.json()["intent"], "UNKNOWN")
         finally:
             agent.generate_response = original
+
+    def test_date_time_rules_and_state_isolation(self):
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        self.assertEqual(normalize_booking_date("tomorrow"), (today + timedelta(days=1)).isoformat())
+        self.assertEqual(normalize_booking_time("10 am"), "10:00 AM")
+        self.assertTrue(is_within_clinic_hours(datetime(2099, 7, 10, 10, 0)))
+        self.assertFalse(is_within_clinic_hours(datetime(2099, 7, 12, 10, 0)))
+        a, b = uuid.uuid4().hex, uuid.uuid4().hex
+        self.assertNotEqual(self.send(a, "hello").json()["session_id"], self.send(b, "hello").json()["session_id"])
+
+    def test_cors_is_not_wildcard(self):
+        response = self.client.options("/health", headers={"Origin": "https://untrusted.invalid", "Access-Control-Request-Method": "GET"})
+        self.assertIsNone(response.headers.get("access-control-allow-origin"))
 
 
 if __name__ == "__main__":

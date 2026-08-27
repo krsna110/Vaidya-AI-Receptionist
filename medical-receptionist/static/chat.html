@@ -61,7 +61,10 @@
 <body class="bg-background text-on-surface font-body-lg min-h-screen flex flex-col md:flex-row overflow-hidden">
     <header class="fixed top-0 w-full bg-surface/70 backdrop-blur-md text-primary font-title-md text-title-md h-16 flex justify-between items-center px-4 md:px-8 z-50 border-b border-white/10 shadow-md">
         <div class="flex items-center gap-3">
-            <span class="font-display-lg text-2xl text-primary tracking-tight">Vaidya AI</span>
+            <div>
+                <span class="font-display-lg text-2xl text-primary tracking-tight">Vaidya AI</span>
+                <span class="block text-[11px] text-on-surface-variant">Virtual Clinic Receptionist</span>
+            </div>
             <div class="h-6 w-px bg-white/10 mx-2 hidden md:block"></div>
             <div class="flex flex-col leading-tight">
                 <span class="font-title-md text-body-lg text-on-surface">City Dental Clinic</span>
@@ -121,7 +124,8 @@
                 <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 class="text-3xl font-bold text-on-surface">Clinical Chat</h1>
-                        <p class="text-on-surface-variant">Chat with Vaidya AI and book appointments instantly.</p>
+                        <p class="text-on-surface-variant">Chat with Vaidya AI to arrange a visit or get clinic information.</p>
+                        <p class="mt-2 max-w-2xl text-xs text-on-surface-variant/80">Vaidya AI helps with clinic information and appointments. It does not provide medical diagnosis or emergency care.</p>
                     </div>
                     <button class="inline-flex items-center gap-2 px-5 py-3 bg-primary-container text-on-primary-container rounded-2xl font-semibold shadow-lg hover:brightness-110 transition">Open Chat</button>
                 </div>
@@ -131,9 +135,8 @@
         <div class="absolute bottom-0 left-0 md:left-[280px] right-0 p-4 md:p-6 bg-gradient-to-t from-background via-background/95 to-transparent">
             <div class="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
                 <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-primary border-primary/30 hover:bg-primary/10 transition active:scale-95">Book Appointment</button>
-                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Cancel Booking</button>
-                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Clinic Timings</button>
-                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Talk to Doctor</button>
+                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Clinic Information</button>
+                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Available Slots</button>
             </div>
             <div class="glass-panel p-3 rounded-2xl flex items-center gap-3 shadow-2xl focus-within:border-primary/50 transition-all">
                 <button type="button" class="p-2 text-on-surface-variant hover:text-primary transition active:scale-90">
@@ -174,6 +177,7 @@
         const chatWindow = document.getElementById('chat-window');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
+        let requestInFlight = false;
         let userId = localStorage.getItem('user_id');
 
         if (!userId) {
@@ -252,7 +256,10 @@
 
         async function sendMessage() {
             const message = userInput.value.trim();
-            if (!message) return;
+            if (!message || requestInFlight) return;
+            requestInFlight = true;
+            sendButton.disabled = true;
+            sendButton.classList.add('opacity-50', 'cursor-not-allowed');
             appendMessage(message, 'user');
             userInput.value = '';
             showTypingIndicator();
@@ -262,8 +269,12 @@
                 appendMessage(data.response || 'Sorry, I did not get a response.', 'ai');
             } catch (err) {
                 removeTypingIndicator();
-                appendMessage('Something went wrong. Please try again.', 'ai');
+                appendMessage('I’m unable to reach the clinic service right now. Please try again.', 'ai');
                 console.error(err);
+            } finally {
+                requestInFlight = false;
+                sendButton.disabled = false;
+                sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
