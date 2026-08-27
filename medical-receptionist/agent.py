@@ -126,14 +126,21 @@ CLINIC CONTEXT:
             return {}
 
     def detect_language(self, text: str) -> str:
+        # Short mixed-script messages are frequently misclassified by statistical
+        # language detectors. Prefer explicit script/clinic markers first so the
+        # receptionist remains predictable for Hindi and Hinglish patients.
+        value = (text or "").strip().lower()
+        if re.search(r"[\u0900-\u097f]", value):
+            return "Hindi"
+        hinglish_markers = ("kya", "aap", "hai", "kaise", "mujhe", "kal", "baje", "chahiye", "karna")
+        if any(re.search(rf"\b{re.escape(word)}\b", value) for word in hinglish_markers):
+            return "Hinglish"
         try:
             lang = detect(text)
             if lang == "hi":
                 return "Hindi"
             if lang == "en":
                 return "English"
-            if any(word in text.lower() for word in ["kya", "aap", "hai", "kaise"]):
-                return "Hinglish"
             return "English"
         except Exception:
             return "English"

@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 from pydantic import BaseModel, model_validator
 
@@ -134,18 +135,21 @@ def is_within_clinic_hours(appointment_dt: datetime) -> bool:
 
 
 def is_confirmation_message(message: str) -> bool:
-    text_msg = (message or "").strip().lower()
-    confirmations = [
-        "yes",
-        "confirm",
-        "confirmed",
-        "yes confirm",
-        "yes confirm booking",
-        "book it",
-        "proceed",
-        "done",
-    ]
-    return any(token in text_msg for token in confirmations)
+    text_msg = re.sub(r"[^a-z0-9 ]+", " ", (message or "").strip().lower())
+    text_msg = re.sub(r"\s+", " ", text_msg).strip()
+    confirmations = {"yes", "confirm", "confirmed", "yes confirm", "yes confirm booking", "book it", "proceed", "done"}
+    return text_msg in confirmations
+
+
+def is_emergency_message(message: str) -> bool:
+    """Recognize a small, conservative set of urgent phrases without diagnosing."""
+    text_msg = (message or "").lower()
+    urgent_phrases = (
+        "difficulty breathing", "can't breathe", "cannot breathe", "chest pain",
+        "unconscious", "heavy bleeding", "severe bleeding", "stroke", "बेहोश",
+        "सांस नहीं", "सीने में दर्द",
+    )
+    return any(phrase in text_msg for phrase in urgent_phrases)
 
 
 def extract_appointment_id(data: dict, message: str) -> int | None:
@@ -331,7 +335,8 @@ def create_appointment_from_booking_data(db: Session, data: dict, session_id: st
             .first()
         )
         if existing:
-            return existing.id
+            logger.warning("Duplicate appointment request rejected")
+            return None
 
         # Prevent double-booking same slot (active confirmed appointment at same date+time).
         slot_conflict = (
@@ -360,7 +365,12 @@ def create_appointment_from_booking_data(db: Session, data: dict, session_id: st
             reason=reason,
         )
         db.add(appointment)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            logger.warning("Concurrent slot conflict rejected")
+            return None
         db.refresh(appointment)
     finally:
         APPOINTMENT_LOCK.release()
@@ -449,6 +459,9 @@ def ensure_sqlite_schema_upgrades() -> None:
                 if col_name not in existing_cols:
                     conn.execute(text(f"ALTER TABLE appointments ADD COLUMN {col_name} {col_type}"))
                     logger.info(f"DB upgrade applied: added appointments.{col_name}")
+            # Enforce one active appointment per slot at the database level as a
+            # second line of defence beyond the in-process lock.
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_active_appointment_slot ON appointments(date, time) WHERE is_confirmed = 1"))
 
             conv_rows = conn.execute(text("PRAGMA table_info(conversations)")).fetchall()
             conv_existing_cols = {row[1] for row in conv_rows}
@@ -461,7 +474,7 @@ def ensure_sqlite_schema_upgrades() -> None:
 
 
 ensure_sqlite_schema_upgrades()
-logger.info(f"SQLite database URL: {database.SQLALCHEMY_DATABASE_URL}")
+# Do not log DATABASE_URL: production URLs can contain database credentials.
 
 # ---------- FastAPI app ----------
 app = FastAPI(
@@ -641,6 +654,16 @@ async def webhook_receiver(
     message = (payload.message or "").strip()[:500]
     if not message:
         return {"response": "Please send a message", "intent": "UNKNOWN"}
+
+    if is_emergency_message(message):
+        return {
+            "response": "This may need urgent medical attention. Please call local emergency services or go to the nearest emergency department now. I can help with a routine appointment once you are safe.",
+            "intent": "SAFETY",
+            "confidence": 1.0,
+            "language": "en",
+            "state": current_state,
+            "session_id": user_id,
+        }
 
     # Get current conversation state
     conversation_state = state_manager.get_state(user_id)
