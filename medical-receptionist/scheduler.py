@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -14,6 +15,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 logger = logging.getLogger(__name__)
+CLINIC_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 class Scheduler:
@@ -34,7 +36,7 @@ class Scheduler:
         logger.info("Running reminder job...")
         session = SessionLocal()
         try:
-            tomorrow = datetime.now().date() + timedelta(days=1)
+            tomorrow = datetime.now(CLINIC_TIMEZONE).date() + timedelta(days=1)
             appointments = (
                 session.query(Appointment)
                 .filter(
@@ -75,7 +77,7 @@ class Scheduler:
         logger.info("Running follow-up job...")
         session = SessionLocal()
         try:
-            today = datetime.now().date()
+            today = datetime.now(CLINIC_TIMEZONE).date()
             appointments = (
                 session.query(Appointment)
                 .filter(

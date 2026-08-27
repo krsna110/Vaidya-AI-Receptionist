@@ -1,9 +1,7 @@
 # Deployment Guide
 
-This project has two deployable apps:
-
-- `medical-receptionist`: FastAPI backend
-- `vaidyai-web`: Next.js frontend
+The deployable MVP is the `medical-receptionist` FastAPI service. The `vaidyai-web`
+directory contains static design exports and is not a Node application.
 
 ## 1. Deploy Backend
 
@@ -52,55 +50,12 @@ It should return:
 {"status":"healthy"}
 ```
 
-## 2. Deploy Frontend
-
-Use Render as a Node web service or use Vercel for the Next.js app.
-
-Frontend root directory:
-
-```text
-vaidyai-web
-```
-
-Render settings:
-
-```text
-Root Directory: vaidyai-web
-Runtime: Node
-Build Command: npm ci && npm run build
-Start Command: npm run start -- -p $PORT
-```
-
-Build command:
-
-```bash
-npm run build
-```
-
-Environment variables:
-
-```text
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-domain
-```
-
-Do not deploy this Next.js app as a Render Static Site unless you remove the Next API routes. Use a Render Web Service so `/api/*`, `/admin`, and `next start` work correctly.
-
-## 3. Connect Both Apps
-
-After the frontend URL is live, update the backend environment variable:
-
-```text
-FRONTEND_ORIGINS=https://your-frontend-domain.vercel.app
-```
-
-Redeploy/restart the backend.
-
-## 4. First Production Tests
+## 2. First deployment tests
 
 1. Open `https://your-backend-domain/health`.
-2. Open `https://your-frontend-domain.vercel.app/chat`.
+2. Open `https://your-backend-domain/chat`.
 3. Send `hello` in the chat.
-4. Open `https://your-frontend-domain.vercel.app/admin`.
+4. Set `ADMIN_USERNAME` and `ADMIN_PASSWORD`, then obtain a token from `/auth/token` before opening `/admin`.
 
 ## Notes
 

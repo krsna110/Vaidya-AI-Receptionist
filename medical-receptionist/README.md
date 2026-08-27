@@ -89,9 +89,12 @@ cp medical-receptionist/.env.example medical-receptionist/.env
 Edit the `.env` file:
 
 ```
-GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-GROQ_API_KEY="YOUR_GROQ_API_KEY"
-DATABASE_URL="sqlite:///./medical-receptionist/sql_app.db"
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"  # optional
+GROQ_API_KEY="YOUR_GROQ_API_KEY"      # optional
+SECRET_KEY="generate-a-long-random-value"
+ADMIN_USERNAME="clinic-admin"
+ADMIN_PASSWORD="use-a-strong-password"
+DATABASE_URL="sqlite:///./sql_app.db"
 ```
 
 -   **GEMINI_API_KEY**: Obtain this from the [Google AI Studio](https://makersuite.google.com/key).
@@ -101,7 +104,7 @@ DATABASE_URL="sqlite:///./medical-receptionist/sql_app.db"
 ### 7. Run the FastAPI Server
 
 ```bash
-uvicorn medical-receptionist.main:app --reload
+uvicorn main:app --reload
 ```
 
 This will start the development server. You should see output indicating that the server is running, typically at `http://127.0.0.1:8000`.

@@ -237,11 +237,11 @@ CLINIC CONTEXT:
         logger.warning("AI providers unavailable; using deterministic receptionist fallback.")
         text = user_message.strip().lower()
         data = self.extract_patient_data(user_message, conversation_history)
-        if any(word in text for word in ("hello", "hi", "namaste", "hey")) and not any(word in text for word in ("book", "appointment", "schedule")):
+        if any(word in text for word in ("hello", "hi", "namaste", "hey", "नमस्ते", "नमस्कार")) and not any(word in text for word in ("book", "appointment", "schedule", "अपॉइंटमेंट")):
             return {"intent": "GREETING", "response": "Namaste! I’m Vaidya AI. Would you like to book an appointment or ask about the clinic?", "language": "en", "confidence": 0.95, "data": data}
         if any(word in text for word in ("cancel", "cancellation", "reschedule")):
             return {"intent": "CANCEL", "response": "I can help with that. Please share your appointment ID or the phone number used for booking.", "language": "en", "confidence": 0.9, "data": data}
-        if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit")) or any(data.values()):
+        if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit", "अपॉइंटमेंट", "मुलाकात")) or any(data.values()):
             return {"intent": "BOOKING", "response": "Sure, I can help you book an appointment.", "language": "en", "confidence": 0.9, "data": data}
         if any(word in text for word in ("hours", "timing", "open", "address", "location", "fee", "services")):
             return {"intent": "FAQ", "response": self._faq_response(text), "language": "en", "confidence": 0.85, "data": data}

@@ -20,10 +20,11 @@ Patient browser → `/chat` → `POST /webhook` → `StateManager` loads the ses
 
 ## Remaining risks before production
 
-- The admin login is a demo credential (`admin/password`) and must be replaced before deployment.
+- Admin credentials are now required through `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
 - SQLite plus one long-lived `StateManager` session is suitable for a prototype, not multi-instance production. Use Postgres and request-scoped state sessions for deployment.
 - Google Calendar is optional and requires OAuth files; booking still works locally without it.
-- The Render manifest currently deploys `vaidyai-web` as Node, but that directory is static HTML only. Deploy `medical-receptionist` as Python (or add a real frontend build) before using Render.
+- Render now deploys `medical-receptionist` directly as a Python web service.
+- Rescheduling remains a future enhancement; cancellation by appointment ID is implemented.
 - Medical safety is intentionally limited to receptionist tasks; the agent must not diagnose or provide treatment advice.
 
 ## Local run

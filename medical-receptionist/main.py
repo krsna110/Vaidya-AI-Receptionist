@@ -4,6 +4,7 @@ import os
 import re
 import asyncio
 from datetime import datetime, timedelta, date
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse, FileResponse
@@ -48,6 +49,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+CLINIC_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 def normalize_phone(raw_phone: str) -> str:
@@ -66,7 +68,7 @@ def normalize_booking_date(raw_date: str) -> str:
     value = (raw_date or "").strip().lower()
     if not value:
         return ""
-    today_obj = date.today()
+    today_obj = datetime.now(CLINIC_TIMEZONE).date()
     if value == "today":
         return today_obj.isoformat()
     if value in ("tomorrow", "tommorrow"):
@@ -310,7 +312,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
 
     appointment = models.Appointment(
         patient_id=patient.id,
-        start_time=datetime.utcnow(),
+        start_time=datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None),
         end_time=None,
         description=reason,
         is_confirmed=True,
@@ -427,18 +429,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-
-@app.middleware("http")
-async def debug_auth_middleware(request: Request, call_next):
-    import traceback
-    print(f"REQUEST: {request.method} {request.url.path}")
-    print(f"HEADERS: {dict(request.headers)}")
-    response = await call_next(request)
-    print(f"RESPONSE STATUS: {response.status_code}")
-    if response.status_code == 401:
-        print("401 DETECTED - checking stack")
-        traceback.print_stack()
-    return response
 
 # Mount Static Files (directory relative to CWD which is medical-receptionist/)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
@@ -566,7 +556,9 @@ async def login_for_access_token(
     db: Session = Depends(database.get_db),
 ):
     """Authenticates a user and returns an access token."""
-    if form_data.username != "admin" or form_data.password != "password":
+    if not auth.ADMIN_USERNAME or not auth.ADMIN_PASSWORD:
+        raise HTTPException(status_code=503, detail="Admin authentication is not configured")
+    if form_data.username != auth.ADMIN_USERNAME or form_data.password != auth.ADMIN_PASSWORD:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -603,7 +595,7 @@ async def webhook_receiver(
     current_state = conversation_state.state
 
     logger.info(f"Webhook received: session={user_id}")
-    logger.info(f"User {user_id} | state={current_state} | msg={message!r}")
+    logger.info(f"User {user_id} | state={current_state} | message_received=true")
 
     # Fetch last 6 messages for conversation history
     conversation_history = [
@@ -739,7 +731,11 @@ async def webhook_receiver(
         bare_value = message.strip()
         if not merged_data.get("name") and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,60}", bare_value) and not re.search(r"\b(pain|fever|cough|check|clean|consult|appointment)\b", bare_value, re.I):
             merged_data["name"] = bare_value.title()
-        elif not merged_data.get("reason") and len(bare_value) >= 3 and not re.search(r"\d", bare_value) and not re.fullmatch(r"(yes|no|confirm|confirmed)", bare_value, re.I):
+        elif merged_data.get("name") and merged_data.get("phone") and not merged_data.get("date"):
+            # Treat the next unlabelled answer as the requested date so malformed
+            # values are rejected explicitly instead of being misfiled as a reason.
+            merged_data["date"] = bare_value
+        elif merged_data.get("name") and merged_data.get("phone") and merged_data.get("date") and merged_data.get("time") and not merged_data.get("reason") and len(bare_value) >= 3 and not re.search(r"\d", bare_value) and not re.fullmatch(r"(yes|no|confirm|confirmed)", bare_value, re.I):
             if not re.search(r"\b(today|tomorrow|am|pm)\b", bare_value, re.I):
                 merged_data["reason"] = bare_value
         if intent == "UNKNOWN" and any(merged_data.get(field) for field in ("name", "phone", "date", "time", "reason")):
@@ -752,6 +748,23 @@ async def webhook_receiver(
         merged_data["time"] = normalize_booking_time(merged_data.get("time"))
     if merged_data.get("phone"):
         merged_data["phone"] = normalize_phone(merged_data.get("phone"))
+
+    # Cancellation is a deterministic, explicit operation. Never let the model
+    # mutate an appointment without a concrete ID in the patient message.
+    if intent == "CANCEL":
+        new_state = current_state
+        appointment_id = extract_appointment_id(data if isinstance(data, dict) else {}, message)
+        if appointment_id is None:
+            response_text = "Please share the appointment ID (for example, 12) so I can cancel it."
+            new_state = "CANCEL"
+        elif cancel_appointment_record(db, appointment_id):
+            response_text = f"Appointment {appointment_id} has been cancelled."
+            new_state = "CANCELLED"
+        else:
+            response_text = f"I could not find an active appointment with ID {appointment_id}."
+            new_state = "CANCEL"
+        state_manager.set_state(user_id, new_state, merged_data)
+        return {"response": response_text, "intent": "CANCEL", "state": new_state, "confidence": confidence, "language": language, "session_id": user_id}
 
     try:
         upsert_patient_from_data(db, merged_data)
@@ -782,7 +795,13 @@ async def webhook_receiver(
             response_text = "I could not create the appointment right now. Please try again."
     elif intent == "BOOKING":
         missing_fields = missing_booking_fields(merged_data)
-        if "name" in missing_fields:
+        if merged_data.get("date") and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(merged_data["date"])):
+            response_text = "Please provide the date as YYYY-MM-DD, or say today/tomorrow."
+            new_state = "COLLECT_INFO"
+        elif merged_data.get("time") and parse_booking_datetime(merged_data.get("date", ""), merged_data["time"]) is None:
+            response_text = "Please provide a valid time, such as 10 AM or 14:30."
+            new_state = "COLLECT_INFO"
+        elif "name" in missing_fields:
             response_text = "May I have your name please?"
             new_state = "COLLECT_INFO"
         elif "phone" in missing_fields:
