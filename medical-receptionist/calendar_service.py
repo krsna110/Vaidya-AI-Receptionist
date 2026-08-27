@@ -26,8 +26,7 @@ class GoogleCalendarService:
         try:
             self.service = self._authenticate()
         except Exception as e:
-            print(f"Calendar not configured: {e}")
-            logger.warning(f"Calendar not configured: {e}")
+            logger.warning("Calendar not configured: %s", type(e).__name__)
             self.service = None
 
     def _authenticate(self):
@@ -60,7 +59,7 @@ class GoogleCalendarService:
             service = build("calendar", "v3", credentials=self.creds)
             return service
         except HttpError as error:
-            print(f"An error occurred while connecting to Google Calendar: {error}")
+            logger.warning("Google Calendar connection failed: %s", type(error).__name__)
             return None
 
     def get_available_slots(self, date: datetime.date, duration_minutes: int = 30) -> list:
@@ -128,10 +127,10 @@ class GoogleCalendarService:
 
             return free_slots
         except HttpError as error:
-            print(f"An error occurred while retrieving free slots: {error}")
+            logger.warning("Calendar slot lookup failed: %s", type(error).__name__)
             return []
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.warning("Calendar slot lookup failed: %s", type(e).__name__)
             return []
 
     def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str or None:
@@ -141,9 +140,9 @@ class GoogleCalendarService:
         end_datetime = start_datetime + datetime.timedelta(minutes=30)
 
         event = {
-            "summary": f"Appointment: {reason} - {patient_name}",
-            "location": "Clinic Address Here",  # Placeholder
-            "description": f"Patient Phone: {phone}",
+            "summary": "Clinic appointment",
+            "location": "Clinic",
+            "description": "Booked consultation",
             "start": {
                 "dateTime": start_datetime.isoformat(),
                 "timeZone": "Asia/Kolkata",  # Or appropriate timezone
@@ -163,31 +162,38 @@ class GoogleCalendarService:
 
         try:
             event = self.service.events().insert(calendarId="primary", body=event).execute()
-            print(f"Event created: {event.get('htmlLink')}")
             return event.get("id")
         except HttpError as error:
-            print(f"An error occurred while booking the appointment: {error}")
+            logger.warning("Calendar booking failed: %s", type(error).__name__)
             return None
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.warning("Calendar booking failed: %s", type(e).__name__)
             return None
 
     def cancel_appointment(self, event_id: str) -> bool:
         if not self.service:
             return False
-
         try:
             self.service.events().delete(calendarId="primary", eventId=event_id).execute()
-            print(f"Event {event_id} cancelled successfully.")
             return True
         except HttpError as error:
-            if error.resp.status == 404:
-                print(f"Event with ID {event_id} not found.")
-            else:
-                print(f"An error occurred while cancelling the appointment: {error}")
+            return getattr(error.resp, "status", None) == 404
+        except Exception as error:
+            logger.warning("Calendar cancellation failed: %s", type(error).__name__)
             return False
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+
+    def reschedule_appointment(self, event_id: str, start_datetime: datetime.datetime) -> bool:
+        if not self.service:
+            return False
+        try:
+            end_datetime = start_datetime + datetime.timedelta(minutes=30)
+            self.service.events().update(calendarId="primary", eventId=event_id, body={
+                "start": {"dateTime": start_datetime.isoformat(), "timeZone": "Asia/Kolkata"},
+                "end": {"dateTime": end_datetime.isoformat(), "timeZone": "Asia/Kolkata"},
+            }).execute()
+            return True
+        except Exception as error:
+            logger.warning("Calendar rescheduling failed: %s", type(error).__name__)
             return False
 
     def suggest_best_slot(self, date: datetime.date, duration_minutes: int = 30) -> str or None:

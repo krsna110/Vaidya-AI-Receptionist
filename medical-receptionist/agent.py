@@ -3,11 +3,13 @@ import json
 import logging
 import os
 import re
+from typing import Literal
 
 from dotenv import load_dotenv
 from google import genai
 from groq import Groq
 from langdetect import detect
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -24,6 +26,24 @@ if not JWT_SECRET:
 
 logger = logging.getLogger(__name__)
 CLINIC_INFO_PATH = os.path.join(BASE_DIR, "data", "clinic_info.json")
+
+
+class PatientData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str | None = None
+    phone: str | None = None
+    date: str | None = None
+    time: str | None = None
+    reason: str | None = None
+
+
+class ReceptionResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    intent: Literal["BOOKING", "FAQ", "CANCEL", "RESCHEDULE", "GREETING", "UNKNOWN"] = "UNKNOWN"
+    response: str = ""
+    language: str = "en"
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    data: PatientData = Field(default_factory=PatientData)
 
 
 class Agent:
@@ -45,7 +65,7 @@ class Agent:
                 self.gemini_client = genai.Client(api_key=self.gemini_api_key)
                 logger.info("Gemini client initialized (google-genai SDK).")
             except Exception as e:
-                logger.warning(f"Could not initialise Gemini client: {e}")
+                logger.warning("Could not initialise Gemini client: %s", type(e).__name__)
 
         self.groq_client = None
         if self.groq_api_key:
@@ -53,7 +73,7 @@ class Agent:
                 self.groq_client = Groq(api_key=self.groq_api_key)
                 logger.info("Groq client initialized.")
             except Exception as e:
-                logger.warning(f"Could not initialise Groq client: {e}")
+                logger.warning("Could not initialise Groq client: %s", type(e).__name__)
 
         self.system_prompt = f"""You are Vaidya AI, an intelligent medical receptionist for
 Indian dental and medical clinics.
@@ -102,7 +122,7 @@ CLINIC CONTEXT:
             with open(CLINIC_INFO_PATH, "r", encoding="utf-8") as clinic_file:
                 return json.load(clinic_file)
         except Exception as e:
-            logger.warning(f"Could not load clinic info: {e}")
+            logger.warning("Could not load clinic info: %s", type(e).__name__)
             return {}
 
     def detect_language(self, text: str) -> str:
@@ -125,6 +145,11 @@ CLINIC CONTEXT:
         if match:
             return json.loads(match.group())
         return json.loads(cleaned)
+
+    @staticmethod
+    def _validate_response(payload: dict) -> dict:
+        parsed = ReceptionResponse.model_validate(payload)
+        return parsed.model_dump(exclude_none=True)
 
     def extract_patient_data(self, message: str, history: list | None = None) -> dict:
         if history is None:
@@ -155,13 +180,13 @@ CLINIC CONTEXT:
                 if extracted_name and extracted_name.lower() != "null":
                     name = extracted_name
             except Exception as e:
-                logger.warning(f"Gemini name extraction failed: {e}")
+                logger.warning("Gemini name extraction failed: %s", type(e).__name__)
 
         date_match = re.search(r"\b(today|tomorrow|\d{4}-\d{2}-\d{2})\b", message, re.IGNORECASE)
         if date_match:
             date = date_match.group(1)
 
-        time_match = re.search(r"\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\b", message, re.IGNORECASE)
+        time_match = re.search(r"(?<![-\d])\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.))\b", message, re.IGNORECASE)
         if time_match:
             time = time_match.group(1)
 
@@ -206,13 +231,13 @@ CLINIC CONTEXT:
                         parsed["language"] = detected_lang.lower()
                     if "confidence" not in parsed:
                         parsed["confidence"] = 0.9
-                    return parsed
+                    return self._validate_response(parsed)
 
                 return asyncio.run(asyncio.wait_for(gemini_call(), timeout=10.0))
             except TimeoutError:
                 logger.warning("Gemini call timed out after 10 seconds. Falling back to Groq...")
             except Exception as e:
-                logger.warning(f"Gemini failed: {e}. Falling back to Groq...")
+                logger.warning("Gemini failed: %s. Falling back to Groq...", type(e).__name__)
 
         if self.groq_client and self.groq_api_key:
             try:
@@ -230,16 +255,18 @@ CLINIC CONTEXT:
                     json_response["language"] = detected_lang.lower()
                 if "confidence" not in json_response:
                     json_response["confidence"] = 0.7
-                return json_response
+                return self._validate_response(json_response)
             except Exception as groq_e:
-                logger.error(f"Groq also failed: {groq_e}")
+                logger.error("Groq also failed: %s", type(groq_e).__name__)
 
         logger.warning("AI providers unavailable; using deterministic receptionist fallback.")
         text = user_message.strip().lower()
         data = self.extract_patient_data(user_message, conversation_history)
         if any(word in text for word in ("hello", "hi", "namaste", "hey", "नमस्ते", "नमस्कार")) and not any(word in text for word in ("book", "appointment", "schedule", "अपॉइंटमेंट")):
             return {"intent": "GREETING", "response": "Namaste! I’m Vaidya AI. Would you like to book an appointment or ask about the clinic?", "language": "en", "confidence": 0.95, "data": data}
-        if any(word in text for word in ("cancel", "cancellation", "reschedule")):
+        if "reschedule" in text or "reschedule" in text:
+            return {"intent": "RESCHEDULE", "response": "I can help reschedule that. Please provide the appointment ID, new date, and new time.", "language": "en", "confidence": 0.9, "data": data}
+        if any(word in text for word in ("cancel", "cancellation")):
             return {"intent": "CANCEL", "response": "I can help with that. Please share your appointment ID or the phone number used for booking.", "language": "en", "confidence": 0.9, "data": data}
         if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit", "अपॉइंटमेंट", "मुलाकात")) or any(data.values()):
             return {"intent": "BOOKING", "response": "Sure, I can help you book an appointment.", "language": "en", "confidence": 0.9, "data": data}
