@@ -16,13 +16,10 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY not set")
-if not JWT_SECRET:
-    print("WARNING: JWT_SECRET not set")
 
 logger = logging.getLogger(__name__)
 CLINIC_INFO_PATH = os.path.join(BASE_DIR, "data", "clinic_info.json")

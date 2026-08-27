@@ -11,6 +11,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -28,18 +29,21 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET")
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 if APP_ENV == "production" and not os.getenv("SECRET_KEY"):
     raise RuntimeError("SECRET_KEY must be configured in production")
 if APP_ENV == "production" and (not os.getenv("ADMIN_USERNAME") or not os.getenv("ADMIN_PASSWORD")):
     raise RuntimeError("ADMIN_USERNAME and ADMIN_PASSWORD must be configured in production")
+if APP_ENV == "production" and not os.getenv("FRONTEND_ORIGINS"):
+    raise RuntimeError("FRONTEND_ORIGINS must be configured in production")
+if APP_ENV == "production" and not os.getenv("DATABASE_URL"):
+    raise RuntimeError("DATABASE_URL must be configured in production")
+if APP_ENV == "production" and not os.getenv("TRUSTED_HOSTS"):
+    raise RuntimeError("TRUSTED_HOSTS must be configured in production")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY not set")
-if not JWT_SECRET:
-    print("WARNING: JWT_SECRET not set")
 
 import database
 import models
@@ -57,7 +61,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-CLINIC_TIMEZONE = ZoneInfo("Asia/Kolkata")
+CLINIC_TIMEZONE = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
 APPOINTMENT_LOCK = threading.Lock()
 
 
@@ -424,8 +428,6 @@ class WebhookRequest(BaseModel):
     def ensure_user_identifier(self):
         if not self.user_id and self.session_id:
             self.user_id = self.session_id
-        if not self.user_id:
-            raise ValueError("Either user_id or session_id is required")
         return self
 
 
@@ -510,6 +512,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+trusted_hosts = [host.strip() for host in os.getenv("TRUSTED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if host.strip()]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "microphone=(self)")
+    patient_session_id = getattr(request.state, "patient_session_id", None)
+    if patient_session_id and not request.cookies.get(auth.PATIENT_SESSION_COOKIE):
+        response.set_cookie(
+            auth.PATIENT_SESSION_COOKIE,
+            auth.create_patient_session(patient_session_id),
+            max_age=auth.PATIENT_SESSION_EXPIRE_MINUTES * 60,
+            httponly=True,
+            secure=APP_ENV == "production",
+            samesite="strict",
+            path="/",
+        )
+    if APP_ENV == "production":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
 # ---------- Initialize services ----------
 agent = Agent()
 state_manager = StateManager()
@@ -543,6 +569,17 @@ async def shutdown_event():
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():
     return {"status": "ok", "service": "Vaidya AI", "version": "2.0"}
+
+
+@app.get("/ready")
+async def readiness_check(db: Session = Depends(database.get_db)):
+    """Readiness probe that checks the database without exposing configuration."""
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ready"}
+    except Exception as exc:
+        logger.error("Readiness check failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Service is not ready")
 
 
 @app.get("/chat")
@@ -652,10 +689,22 @@ async def webhook_receiver(
     db: Session = Depends(database.get_db),
 ):
     """Receives incoming webhook events (e.g., from a messaging platform)."""
-    user_id = payload.user_id
+    cookie_session = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE))
+    if cookie_session and payload.user_id and cookie_session != payload.user_id:
+        raise HTTPException(status_code=403, detail="Session mismatch")
+    user_id = cookie_session or payload.user_id
+    if not user_id or not re.fullmatch(r"[A-Za-z0-9_-]{8,120}", user_id):
+        raise HTTPException(status_code=401, detail="Patient session required")
+    request.state.patient_session_id = user_id
     message = (payload.message or "").strip()[:500]
     if not message:
         return {"response": "Please send a message", "intent": "UNKNOWN"}
+
+    # Resolve session state before any deterministic early return (including
+    # emergency handling) so safety responses cannot reference uninitialised
+    # request state.
+    conversation_state = state_manager.get_state(payload.user_id)
+    current_state = conversation_state.state
 
     if is_emergency_message(message):
         return {
@@ -666,10 +715,6 @@ async def webhook_receiver(
             "state": current_state,
             "session_id": user_id,
         }
-
-    # Get current conversation state
-    conversation_state = state_manager.get_state(user_id)
-    current_state = conversation_state.state
 
     logger.info("Webhook received")
     logger.info("Patient message received")
@@ -966,11 +1011,15 @@ async def webhook_receiver(
 @limiter.limit("5/minute")
 async def transcribe_voice_note(
     request: Request,
-    user_id: str,
+    user_id: str | None = None,
     audio: UploadFile = File(...),
     db: Session = Depends(database.get_db),
 ):
     """Transcribe a short voice note, then send the transcript through /webhook."""
+    user_id = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE)) or user_id
+    if not user_id or not re.fullmatch(r"[A-Za-z0-9_-]{8,120}", user_id):
+        raise HTTPException(status_code=401, detail="Patient session required")
+    request.state.patient_session_id = user_id
     if not speech_to_text.enabled:
         raise HTTPException(status_code=503, detail="Voice notes are not configured")
     try:
@@ -996,6 +1045,9 @@ async def transcribe_voice_note(
 @limiter.limit("3/minute")
 async def create_voice_session(request: Request, user_id: str):
     """Create a short-lived LiveKit room token for browser voice mode."""
+    cookie_session = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE))
+    if cookie_session and cookie_session != user_id:
+        raise HTTPException(status_code=403, detail="Session mismatch")
     if not user_id or len(user_id) > 120:
         raise HTTPException(status_code=400, detail="Invalid session")
     try:

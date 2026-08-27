@@ -37,6 +37,7 @@ ADMIN_PASSWORD=use-a-strong-password
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 DATABASE_URL=sqlite:///./sql_app.db
 FRONTEND_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
+TRUSTED_HOSTS=localhost,127.0.0.1,testserver
 GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
 # Optional; without these keys the deterministic fallback is used:
 # GEMINI_API_KEY=...
@@ -103,6 +104,8 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/appointments `
 ```
 
 Patient `/webhook` requests use a caller-supplied `user_id` to isolate conversation state. Admin endpoints require a valid bearer token. Appointment ownership is checked before patient cancellation/rescheduling.
+
+The server signs the patient session into an HttpOnly, SameSite cookie after the first valid message. A changed session identifier is rejected, and cookies become `Secure` in production.
 
 ## Optional integrations
 
