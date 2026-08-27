@@ -58,6 +58,30 @@ Open:
 
 The chat flow is: choose a language (English, Hindi, or Hinglish) → request an appointment → provide name, Indian phone number, date, time, and reason → review available slot → explicitly reply `confirm`.
 
+## Optional voice capabilities
+
+The chat microphone supports voice notes without creating a second booking flow. A recording is uploaded to `POST /api/voice/transcribe`, transcribed, and passed into the same `/webhook` receptionist pipeline; raw audio is temporary and deleted after processing. Voice notes are disabled unless configured:
+
+```env
+VOICE_NOTES_ENABLED=true
+STT_PROVIDER=local                 # disabled (default), local, or huggingface
+STT_LANGUAGE=auto
+# STT_MODEL=small                  # faster-whisper model when using local
+# HF_STT_ENDPOINT=https://...      # hosted Whisper-compatible endpoint
+# HF_TOKEN=                        # server-side only, if required
+```
+
+`local` requires the optional `faster-whisper` package and a suitable machine; it may be too large for a small Render instance. Hosted STT endpoints can have quotas and may require credentials. If unavailable, text chat continues normally.
+
+Realtime browser voice is an optional LiveKit room extension. It is disabled by default and requires a separately running LiveKit server or LiveKit Cloud plus the optional Python SDK. The backend generates short-lived tokens; LiveKit secrets never go to the browser. Browser WebRTC is not PSTN: calling a real phone number requires a paid SIP/telephony provider and is not implemented here.
+
+```env
+LIVE_CALL_ENABLED=false
+# LIVEKIT_URL=wss://...
+# LIVEKIT_API_KEY=...
+# LIVEKIT_API_SECRET=...
+```
+
 ## Test the API and workflows
 
 From the repository root:

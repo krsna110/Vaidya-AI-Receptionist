@@ -7,7 +7,7 @@ import threading
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +48,7 @@ from agent import Agent
 from state import StateManager
 from calendar_service import GoogleCalendarService
 from scheduler import Scheduler
+from voice_service import SpeechToTextService, VoiceProviderError, create_livekit_session
 from database import engine, Base
 
 # ---------- Logging ----------
@@ -521,6 +522,7 @@ except Exception as e:
     calendar_service = None
 
 scheduler_instance = Scheduler()
+speech_to_text = SpeechToTextService()
 
 
 @app.on_event("startup")
@@ -958,3 +960,45 @@ async def webhook_receiver(
         "language": language,
         "session_id": user_id,
     }
+
+
+@app.post("/api/voice/transcribe")
+@limiter.limit("5/minute")
+async def transcribe_voice_note(
+    request: Request,
+    user_id: str,
+    audio: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+):
+    """Transcribe a short voice note, then send the transcript through /webhook."""
+    if not speech_to_text.enabled:
+        raise HTTPException(status_code=503, detail="Voice notes are not configured")
+    try:
+        audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
+        transcript = await asyncio.to_thread(
+            speech_to_text.transcribe, audio_bytes, audio.content_type, audio.filename
+        )
+        logger.info("Voice note transcribed")
+        result = await webhook_receiver(
+            request,
+            WebhookRequest(user_id=user_id, message=transcript),
+            db,
+        )
+        return {"transcript": transcript, "response": result}
+    except VoiceProviderError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error("Voice note processing failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=500, detail="Voice note could not be processed")
+
+
+@app.post("/api/voice/session")
+@limiter.limit("3/minute")
+async def create_voice_session(request: Request, user_id: str):
+    """Create a short-lived LiveKit room token for browser voice mode."""
+    if not user_id or len(user_id) > 120:
+        raise HTTPException(status_code=400, detail="Invalid session")
+    try:
+        return await asyncio.to_thread(create_livekit_session, user_id)
+    except VoiceProviderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))

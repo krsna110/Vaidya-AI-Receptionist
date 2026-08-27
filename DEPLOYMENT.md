@@ -39,6 +39,9 @@ GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
 APP_ENV=production
 ADMIN_USERNAME=<clinic-admin-username>
 ADMIN_PASSWORD=<strong-random-password>
+VOICE_NOTES_ENABLED=false
+STT_PROVIDER=disabled
+LIVE_CALL_ENABLED=false
 ```
 
 After backend deploys, test:
@@ -67,3 +70,5 @@ It should return:
 - SQLite works for demos, but use a managed database for real production usage.
 - The patient UI is served by the same FastAPI service at `/chat`; no separate Node frontend deployment is required.
 - In production, set `FRONTEND_ORIGINS` to the exact allowed origins (comma-separated); do not use `*`.
+- Voice notes are optional. Local `faster-whisper` can be resource-heavy for Render; use a private hosted STT endpoint if needed and keep its token server-side.
+- LiveKit browser voice requires LiveKit Cloud or a separately hosted LiveKit server. Real mobile/landline calling additionally requires paid SIP/telephony service.
