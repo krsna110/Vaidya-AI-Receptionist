@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import threading
 
 from sqlalchemy import Column, String, DateTime
 
@@ -24,32 +25,38 @@ class ConversationState(Base):
 class StateManager:
     def __init__(self):
         self.db = SessionLocal()
+        self._lock = threading.RLock()
 
     def get_state(self, user_id: str):
-        state = (
+        with self._lock:
+            state = (
             self.db.query(ConversationState)
             .filter(ConversationState.user_id == user_id)
             .first()
-        )
-        if not state:
-            state = ConversationState(user_id=user_id, state="GREETING", data=json.dumps({"unknown_count": 0}))
-            self.db.add(state)
-            self.db.commit()
-            self.db.refresh(state)
-        return state
+            )
+            if not state:
+                state = ConversationState(user_id=user_id, state="GREETING", data=json.dumps({"unknown_count": 0}))
+                self.db.add(state)
+                self.db.commit()
+                self.db.refresh(state)
+            return state
 
     def set_state(self, user_id: str, new_state: str, data: dict = None):
-        state = self.get_state(user_id)
-        state.state = new_state
-        state.last_updated = datetime.datetime.now()
-        if data is not None:
+        with self._lock:
+            state = self.get_state(user_id)
+            state.state = new_state
+            state.last_updated = datetime.datetime.now()
+            if data is not None:
             # Merge new data with existing data if present
-            existing_data = json.loads(state.data or "{}")
-            merged_data = {**existing_data, **data}
-            state.data = json.dumps(merged_data)
-        self.db.commit()
-        self.db.refresh(state)
-        return state
+                try:
+                    existing_data = json.loads(state.data or "{}")
+                except (TypeError, ValueError):
+                    existing_data = {}
+                merged_data = {**existing_data, **data}
+                state.data = json.dumps(merged_data)
+            self.db.commit()
+            self.db.refresh(state)
+            return state
 
     def reset_state(self, user_id: str):
         state = self.get_state(user_id)

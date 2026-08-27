@@ -3,6 +3,7 @@ import json
 import os
 import re
 import asyncio
+import threading
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -27,6 +28,11 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET")
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+if APP_ENV == "production" and not os.getenv("SECRET_KEY"):
+    raise RuntimeError("SECRET_KEY must be configured in production")
+if APP_ENV == "production" and (not os.getenv("ADMIN_USERNAME") or not os.getenv("ADMIN_PASSWORD")):
+    raise RuntimeError("ADMIN_USERNAME and ADMIN_PASSWORD must be configured in production")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
@@ -50,6 +56,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 CLINIC_TIMEZONE = ZoneInfo("Asia/Kolkata")
+APPOINTMENT_LOCK = threading.Lock()
 
 
 def normalize_phone(raw_phone: str) -> str:
@@ -114,6 +121,18 @@ def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
     return None
 
 
+def is_within_clinic_hours(appointment_dt: datetime) -> bool:
+    """Validate a 30-minute appointment against clinic hours in Asia/Kolkata."""
+    local_dt = appointment_dt.replace(tzinfo=CLINIC_TIMEZONE)
+    if local_dt.weekday() == 6:
+        return False
+    close_hour = 15 if local_dt.weekday() == 5 else 18
+    start_hour = 10 if local_dt.weekday() == 5 else 9
+    start = local_dt.replace(hour=start_hour, minute=0, second=0, microsecond=0)
+    close = local_dt.replace(hour=close_hour, minute=0, second=0, microsecond=0)
+    return start <= local_dt and local_dt + timedelta(minutes=30) <= close
+
+
 def is_confirmation_message(message: str) -> bool:
     text_msg = (message or "").strip().lower()
     confirmations = [
@@ -144,6 +163,14 @@ def extract_appointment_id(data: dict, message: str) -> int | None:
     return None
 
 
+def extract_reschedule_details(message: str) -> dict:
+    result = {}
+    match = re.search(r"(?:appointment\s*)#?(\d+).*?((?:today|tomorrow|\d{4}-\d{1,2}-\d{1,2})).*?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)", message, re.I)
+    if match:
+        result.update({"appointment_id": int(match.group(1)), "date": normalize_booking_date(match.group(2)), "time": normalize_booking_time(match.group(3))})
+    return result
+
+
 def extract_booking_details(message: str) -> dict:
     """Extract booking fields from common free-text patient replies."""
     text = (message or "").strip()
@@ -158,10 +185,7 @@ def extract_booking_details(message: str) -> dict:
     if name_match:
         details["name"] = " ".join(part.capitalize() for part in name_match.group(1).strip().split())
 
-    phone_match = re.search(
-        r"(?:\+?\d[\d\s-]{7,}\d)",
-        text,
-    )
+    phone_match = re.search(r"(?:\+91[\s-]?[6-9]\d{9}|[6-9]\d{9})", text)
     if phone_match:
         details["phone"] = normalize_phone(phone_match.group(0))
 
@@ -173,7 +197,7 @@ def extract_booking_details(message: str) -> dict:
     if date_match:
         details["date"] = normalize_booking_date(date_match.group(1))
 
-    time_match = re.search(r"\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\b", lowered, re.IGNORECASE)
+    time_match = re.search(r"(?<![-\d])\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.))\b", lowered, re.IGNORECASE)
     if time_match:
         details["time"] = normalize_booking_time(time_match.group(1))
 
@@ -212,12 +236,20 @@ def booking_summary(data: dict) -> str:
     )
 
 
-def cancel_appointment_record(db: Session, appointment_id: int) -> bool:
-    """Cancel appointment in local DB by ID."""
-    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+def cancel_appointment_record(db: Session, appointment_id: int, session_id: str | None = None) -> bool:
+    """Cancel only an active appointment owned by this patient session."""
+    query = db.query(models.Appointment).filter(models.Appointment.id == appointment_id, models.Appointment.is_confirmed == True)
+    if session_id is not None:
+        query = query.filter(models.Appointment.session_id == session_id)
+    appointment = query.first()
     if not appointment:
         return False
+    if appointment.google_event_id and calendar_service is not None:
+        if not calendar_service.cancel_appointment(appointment.google_event_id):
+            logger.warning("Calendar cancellation failed; local appointment unchanged")
+            return False
     appointment.is_confirmed = False
+    appointment.status = "cancelled"
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
@@ -247,7 +279,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Created patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Created patient record")
         return
 
     updated = False
@@ -261,10 +293,10 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Updated patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Updated patient record")
 
 
-def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
+def create_appointment_from_booking_data(db: Session, data: dict, session_id: str | None = None) -> int | None:
     """Create a confirmed appointment row from collected booking data."""
     name = (data.get("name") or "").strip()
     phone = normalize_phone(data.get("phone") or "")
@@ -274,6 +306,11 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
 
     if not (name and phone and appt_date and appt_time and reason):
         return None
+    if not re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,80}", name) or not re.fullmatch(r"[6-9]\d{9}", phone):
+        return None
+    appointment_dt = parse_booking_datetime(appt_date, appt_time)
+    if appointment_dt is None or appointment_dt.replace(tzinfo=CLINIC_TIMEZONE) <= datetime.now(CLINIC_TIMEZONE) or not is_within_clinic_hours(appointment_dt):
+        return None
 
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
     if patient is None and name:
@@ -281,51 +318,53 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
     if patient is None:
         return None
 
-    existing = (
-        db.query(models.Appointment)
-        .filter(
-            models.Appointment.patient_id == patient.id,
-            models.Appointment.date == appt_date,
-            models.Appointment.time == appt_time,
-            models.Appointment.reason == reason,
+    APPOINTMENT_LOCK.acquire()
+    try:
+        existing = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.patient_id == patient.id,
+                models.Appointment.date == appt_date,
+                models.Appointment.time == appt_time,
+                models.Appointment.reason == reason,
+            )
+            .first()
         )
-        .first()
-    )
-    if existing:
-        return existing.id
+        if existing:
+            return existing.id
 
-    # Prevent double-booking same slot (active confirmed appointment at same date+time).
-    slot_conflict = (
-        db.query(models.Appointment)
-        .filter(
-            models.Appointment.date == appt_date,
-            models.Appointment.time == appt_time,
-            models.Appointment.is_confirmed == True,
+        # Prevent double-booking same slot (active confirmed appointment at same date+time).
+        slot_conflict = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.date == appt_date,
+                models.Appointment.time == appt_time,
+                models.Appointment.is_confirmed == True,
+            )
+            .first()
         )
-        .first()
-    )
-    if slot_conflict:
-        logger.warning(
-            f"Slot conflict: date={appt_date} time={appt_time} already booked by appointment_id={slot_conflict.id}"
-        )
-        return None
+        if slot_conflict:
+            logger.warning("Slot conflict detected")
+            return None
 
-    appointment = models.Appointment(
-        patient_id=patient.id,
-        start_time=datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None),
-        end_time=None,
-        description=reason,
-        is_confirmed=True,
-        date=appt_date,
-        time=appt_time,
-        reason=reason,
-    )
-    db.add(appointment)
-    db.commit()
-    db.refresh(appointment)
-    logger.info(
-        f"Created appointment | id={appointment.id} | patient_id={patient.id} | date={appt_date} | time={appt_time}"
-    )
+        appointment = models.Appointment(
+            patient_id=patient.id,
+            session_id=session_id,
+            start_time=datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None),
+            end_time=None,
+            description=reason,
+            is_confirmed=True,
+            status="confirmed",
+            date=appt_date,
+            time=appt_time,
+            reason=reason,
+        )
+        db.add(appointment)
+        db.commit()
+        db.refresh(appointment)
+    finally:
+        APPOINTMENT_LOCK.release()
+    logger.info("Created appointment")
     return appointment.id
 
 
@@ -389,12 +428,14 @@ Base.metadata.create_all(bind=engine)
 def ensure_sqlite_schema_upgrades() -> None:
     """Apply lightweight SQLite column upgrades for existing local DBs."""
     appointment_required_columns = {
+        "session_id": "VARCHAR",
         "date": "VARCHAR",
         "time": "VARCHAR",
         "reason": "VARCHAR",
         "google_event_id": "VARCHAR",
         "reminder_status": "VARCHAR",
         "followup_status": "VARCHAR",
+        "status": "VARCHAR",
     }
     conversation_required_columns = {
         "session_id": "VARCHAR",
@@ -449,7 +490,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -517,6 +558,17 @@ async def get_all_patients(
 ):
     patients = db.query(models.Patient).all()
     return patients
+
+
+@app.post("/appointments/{appointment_id}/cancel")
+async def admin_cancel_appointment(
+    appointment_id: int,
+    current_user: auth.TokenData = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    if not cancel_appointment_record(db, appointment_id):
+        raise HTTPException(status_code=404, detail="Appointment not found or calendar cancellation failed")
+    return {"status": "cancelled", "appointment_id": appointment_id}
 
 
 @app.post("/state/reset")
@@ -594,8 +646,8 @@ async def webhook_receiver(
     conversation_state = state_manager.get_state(user_id)
     current_state = conversation_state.state
 
-    logger.info(f"Webhook received: session={user_id}")
-    logger.info(f"User {user_id} | state={current_state} | message_received=true")
+    logger.info("Webhook received")
+    logger.info("Patient message received")
 
     # Fetch last 6 messages for conversation history
     conversation_history = [
@@ -675,7 +727,7 @@ async def webhook_receiver(
             )
 
     except Exception as e:
-        logger.error(f"Agent error for user {user_id}: {e}", exc_info=True)
+        logger.error("Agent request failed: %s", type(e).__name__)
         return {
             "response": "I'm experiencing technical difficulties. Please try again shortly.",
             "intent": "UNKNOWN",
@@ -697,11 +749,11 @@ async def webhook_receiver(
         db.refresh(conversation_entry_user)
         db.refresh(conversation_entry_ai)
     except Exception as e:
-        logger.error(f"Failed to save conversation history for user {user_id}: {e}", exc_info=True)
+        logger.error("Failed to save conversation history: %s", type(e).__name__)
 
     # Extract patient data using the new agent method
     extracted_patient_data = agent.extract_patient_data(message, conversation_history)
-    logger.info(f"Extracted patient data: {extracted_patient_data}")
+    logger.info("Patient data extraction completed")
 
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
@@ -751,13 +803,40 @@ async def webhook_receiver(
 
     # Cancellation is a deterministic, explicit operation. Never let the model
     # mutate an appointment without a concrete ID in the patient message.
+    if intent == "RESCHEDULE" or current_state == "RESCHEDULE_CONFIRM":
+        pending = {**existing_data, **extract_reschedule_details(message)}
+        if current_state == "RESCHEDULE_CONFIRM" and is_confirmation_message(message):
+            appt = db.query(models.Appointment).filter(models.Appointment.id == pending.get("appointment_id"), models.Appointment.session_id == user_id, models.Appointment.is_confirmed == True).first()
+            new_dt = parse_booking_datetime(pending.get("date", ""), pending.get("time", ""))
+            conflict = db.query(models.Appointment).filter(models.Appointment.date == pending.get("date"), models.Appointment.time == pending.get("time"), models.Appointment.is_confirmed == True).first()
+            if not appt or not new_dt or new_dt.replace(tzinfo=CLINIC_TIMEZONE) <= datetime.now(CLINIC_TIMEZONE) or not is_within_clinic_hours(new_dt) or (conflict and conflict.id != appt.id):
+                response_text, new_state = "That new slot is unavailable or invalid. Please choose another date and time.", "RESCHEDULE"
+            elif appt.google_event_id and calendar_service is not None and not calendar_service.reschedule_appointment(appt.google_event_id, new_dt):
+                response_text, new_state = "I could not update the calendar, so your existing appointment is unchanged.", "RESCHEDULE"
+            else:
+                appt.date, appt.time, appt.status = pending["date"], pending["time"], "rescheduled"
+                db.commit()
+                response_text, new_state = f"Appointment {appt.id} has been rescheduled.", "BOOKED"
+            state_manager.set_state(user_id, new_state, pending)
+            return {"response": response_text, "intent": "RESCHEDULE", "state": new_state, "confidence": confidence, "language": language, "session_id": user_id}
+        details = extract_reschedule_details(message)
+        if not details:
+            response_text, new_state = "Please provide an appointment ID, new date, and new time.", "RESCHEDULE"
+        elif not db.query(models.Appointment).filter(models.Appointment.id == details["appointment_id"], models.Appointment.session_id == user_id, models.Appointment.is_confirmed == True).first():
+            response_text, new_state = "I could not find that appointment for this session.", "RESCHEDULE"
+        else:
+            response_text, new_state = f"Move appointment {details['appointment_id']} to {details['date']} at {details['time']}? Please confirm.", "RESCHEDULE_CONFIRM"
+            pending = {**existing_data, **details}
+        state_manager.set_state(user_id, new_state, pending)
+        return {"response": response_text, "intent": "RESCHEDULE", "state": new_state, "confidence": confidence, "language": language, "session_id": user_id}
+
     if intent == "CANCEL":
         new_state = current_state
         appointment_id = extract_appointment_id(data if isinstance(data, dict) else {}, message)
         if appointment_id is None:
             response_text = "Please share the appointment ID (for example, 12) so I can cancel it."
             new_state = "CANCEL"
-        elif cancel_appointment_record(db, appointment_id):
+        elif cancel_appointment_record(db, appointment_id, user_id):
             response_text = f"Appointment {appointment_id} has been cancelled."
             new_state = "CANCELLED"
         else:
@@ -769,7 +848,7 @@ async def webhook_receiver(
     try:
         upsert_patient_from_data(db, merged_data)
     except Exception as e:
-        logger.error(f"Patient upsert failed for user {user_id}: {e}", exc_info=True)
+        logger.error("Patient upsert failed: %s", type(e).__name__)
 
     # Update conversation state based on intent and current state
     new_state = current_state
@@ -779,18 +858,24 @@ async def webhook_receiver(
     elif current_state == "CONFIRM" and is_confirmation_message(message):
         new_state = "BOOKED"
         try:
-            appt_id = create_appointment_from_booking_data(db, merged_data)
+            appt_id = create_appointment_from_booking_data(db, merged_data, user_id)
             if appt_id:
                 merged_data["appointment_id"] = appt_id
                 event_id = sync_appointment_to_google_calendar(db, appt_id)
                 if event_id:
                     merged_data["google_event_id"] = event_id
-                response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                    response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                else:
+                    appointment = db.query(models.Appointment).filter(models.Appointment.id == appt_id).first()
+                    if appointment:
+                        appointment.status = "local_only" if calendar_service is None else "calendar_sync_failed"
+                        db.commit()
+                    response_text = f"Your appointment was saved locally as ID {appt_id}, but calendar synchronization is unavailable. Please call the clinic to verify the slot."
             else:
                 new_state = "COLLECT_INFO"
                 response_text = "I could not create the appointment. Please choose a different date or time."
         except Exception as e:
-            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            logger.error("Appointment creation failed: %s", type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
     elif intent == "BOOKING":
@@ -798,9 +883,13 @@ async def webhook_receiver(
         if merged_data.get("date") and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(merged_data["date"])):
             response_text = "Please provide the date as YYYY-MM-DD, or say today/tomorrow."
             new_state = "COLLECT_INFO"
-        elif merged_data.get("time") and parse_booking_datetime(merged_data.get("date", ""), merged_data["time"]) is None:
+        elif merged_data.get("date") and merged_data.get("time") and parse_booking_datetime(merged_data.get("date", ""), merged_data["time"]) is None:
             response_text = "Please provide a valid time, such as 10 AM or 14:30."
             new_state = "COLLECT_INFO"
+        elif merged_data.get("date") and merged_data.get("time") and (parse_booking_datetime(merged_data["date"], merged_data["time"]) or datetime.min).replace(tzinfo=CLINIC_TIMEZONE) <= datetime.now(CLINIC_TIMEZONE):
+            response_text, new_state = "That date/time is in the past. Please choose a future slot.", "COLLECT_INFO"
+        elif merged_data.get("date") and merged_data.get("time") and not is_within_clinic_hours(parse_booking_datetime(merged_data["date"], merged_data["time"])):
+            response_text, new_state = "That time is outside clinic hours. Please choose a weekday 9 AM–6 PM or Saturday 9 AM–3 PM slot.", "COLLECT_INFO"
         elif "name" in missing_fields:
             response_text = "May I have your name please?"
             new_state = "COLLECT_INFO"
@@ -836,7 +925,7 @@ async def webhook_receiver(
 
     state_manager.set_state(user_id, new_state, merged_data)
 
-    logger.info(f"User {user_id} | new_state={new_state} | intent={intent}")
+    logger.info("Conversation state updated")
 
     return {
         "response": response_text,

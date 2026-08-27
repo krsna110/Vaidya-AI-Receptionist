@@ -269,10 +269,7 @@
                     const id = btn.getAttribute('data-cancel-id');
                     try {
                         statusEl.textContent = `Cancelling appointment ${id}...`;
-                        await apiPost('/webhook', {
-                            user_id: 'admin_dashboard',
-                            message: `cancel appointment ${id}`
-                        });
+                        await apiPost(`/appointments/${id}/cancel`, {});
                         await loadAppointments();
                         statusEl.textContent = `Cancelled appointment ${id}`;
                     } catch (err) {

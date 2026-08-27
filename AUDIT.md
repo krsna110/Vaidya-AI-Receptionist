@@ -24,7 +24,8 @@ Patient browser → `/chat` → `POST /webhook` → `StateManager` loads the ses
 - SQLite plus one long-lived `StateManager` session is suitable for a prototype, not multi-instance production. Use Postgres and request-scoped state sessions for deployment.
 - Google Calendar is optional and requires OAuth files; booking still works locally without it.
 - Render now deploys `medical-receptionist` directly as a Python web service.
-- Rescheduling remains a future enhancement; cancellation by appointment ID is implemented.
+- Cancellation is session-owned for patients and admin-owned through a protected endpoint; basic rescheduling is implemented with explicit confirmation.
+- Booking validates Indian phone numbers, future dates, clinic hours, and active-slot conflicts; calendar failures are surfaced as non-successful local-only bookings.
 - Medical safety is intentionally limited to receptionist tasks; the agent must not diagnose or provide treatment advice.
 
 ## Local run
