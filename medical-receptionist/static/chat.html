@@ -175,7 +175,6 @@
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         let userId = localStorage.getItem('user_id');
-        let jwtToken = null;
 
         if (!userId) {
             userId = generateUUID();
@@ -237,36 +236,14 @@
             if (wrapper) wrapper.remove();
         }
 
-        async function authenticate() {
-            try {
-                const response = await fetch('/auth/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'username=admin&password=password'
-                });
-                if (!response.ok) throw new Error('Auth failed');
-                const data = await response.json();
-                jwtToken = data.access_token;
-            } catch (err) {
-                console.error(err);
-                appendMessage('Unable to authenticate with the backend. Please try again later.', 'ai');
-            }
-        }
-
         async function callWebhook(message) {
-            if (!jwtToken) await authenticate();
             const response = await fetch('/webhook', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwtToken}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ user_id: userId, message })
             });
-            if (response.status === 401) {
-                jwtToken = null;
-                return callWebhook(message);
-            }
             if (!response.ok) {
                 throw new Error(`Webhook failed: ${response.statusText}`);
             }
@@ -302,7 +279,6 @@
         });
 
         (async () => {
-            await authenticate();
             appendMessage('Hello! Welcome to Vaidya AI reception. How can I assist you today?', 'ai');
         })();
     </script>

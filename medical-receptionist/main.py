@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import re
+import asyncio
 from datetime import datetime, timedelta, date
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
@@ -440,7 +441,7 @@ async def debug_auth_middleware(request: Request, call_next):
     return response
 
 # Mount Static Files (directory relative to CWD which is medical-receptionist/)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 # CORS middleware
 configured_origins = os.getenv("FRONTEND_ORIGINS", "")
@@ -501,13 +502,13 @@ async def health_check():
 @app.get("/chat")
 def serve_chat():
     """Serve the chat HTML UI directly."""
-    return FileResponse("static/chat.html")
+    return FileResponse(os.path.join(BASE_DIR, "static", "chat.html"))
 
 
 @app.get("/admin")
 def serve_admin():
     """Serve the admin dashboard UI."""
-    return FileResponse("static/admin.html")
+    return FileResponse(os.path.join(BASE_DIR, "static", "admin.html"))
 
 
 @app.get("/appointments")
@@ -628,7 +629,11 @@ async def webhook_receiver(
     name_intro_match = re.search(r"\bmy name is\s+([a-z][a-z ]{0,40})", message, re.IGNORECASE)
     if name_intro_match:
         extracted_name = name_intro_match.group(1).strip().title()
-        state_manager.set_state(user_id, current_state, {**conversation_state.data, "name": extracted_name})
+        try:
+            existing_state_data = json.loads(conversation_state.data or "{}")
+        except Exception:
+            existing_state_data = {}
+        state_manager.set_state(user_id, current_state, {**existing_state_data, "name": extracted_name})
         return {
             "response": f"Nice to meet you, {extracted_name}. How can I help you today?",
             "intent": "GREETING",
@@ -640,7 +645,10 @@ async def webhook_receiver(
 
     # Fast path for simple memory lookup used in conversation-history checks.
     if message.lower() in {"what is my name?", "what's my name?", "what is my name"}:
-        known_name = (conversation_state.data or {}).get("name")
+        try:
+            known_name = json.loads(conversation_state.data or "{}").get("name")
+        except Exception:
+            known_name = None
         for item in reversed(conversation_history):
             match = re.search(r"\bmy name is\s+([a-z][a-z ]{0,40})", item.get("content", ""), re.IGNORECASE)
             if match:
@@ -658,7 +666,7 @@ async def webhook_receiver(
 
     # --- Generate AI response with error handling ---
     try:
-        agent_response = agent.generate_response(message, conversation_history)
+        agent_response = await asyncio.to_thread(agent.generate_response, message, conversation_history)
         intent = agent_response.get("intent", "UNKNOWN")
         response_text = agent_response.get("response", "Sorry, something went wrong.")
         data = agent_response.get("data", {})
@@ -706,7 +714,7 @@ async def webhook_receiver(
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
     if isinstance(data, dict):
-        data = {**data, **deterministic_data, **extracted_patient_data}
+        data = {**{k: v for k, v in data.items() if v}, **deterministic_data, **extracted_patient_data}
     else:
         data = {**deterministic_data, **extracted_patient_data}
 
@@ -724,6 +732,18 @@ async def webhook_receiver(
     except Exception:
         existing_data = {}
     merged_data = {**existing_data, **(data if isinstance(data, dict) else {})}
+
+    # In a guided collection turn, patients commonly answer with just the value
+    # (e.g. "Ravi" or "tooth pain") rather than a labelled sentence.
+    if current_state in {"COLLECT_INFO", "BOOKING"}:
+        bare_value = message.strip()
+        if not merged_data.get("name") and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,60}", bare_value) and not re.search(r"\b(pain|fever|cough|check|clean|consult|appointment)\b", bare_value, re.I):
+            merged_data["name"] = bare_value.title()
+        elif not merged_data.get("reason") and len(bare_value) >= 3 and not re.search(r"\d", bare_value) and not re.fullmatch(r"(yes|no|confirm|confirmed)", bare_value, re.I):
+            if not re.search(r"\b(today|tomorrow|am|pm)\b", bare_value, re.I):
+                merged_data["reason"] = bare_value
+        if intent == "UNKNOWN" and any(merged_data.get(field) for field in ("name", "phone", "date", "time", "reason")):
+            intent = "BOOKING"
 
     # Apply normalizations to merged data
     if merged_data.get("date"):

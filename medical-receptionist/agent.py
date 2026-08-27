@@ -169,7 +169,7 @@ CLINIC CONTEXT:
         if reason_match:
             reason = reason_match.group(1).strip()
 
-        return {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}
+        return {key: value for key, value in {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}.items() if value}
 
     def generate_response(self, user_message: str, conversation_history: list | None = None) -> dict:
         if conversation_history is None:
@@ -234,13 +234,31 @@ CLINIC CONTEXT:
             except Exception as groq_e:
                 logger.error(f"Groq also failed: {groq_e}")
 
-        logger.warning("Both AI services are unavailable; using hardcoded fallback response.")
-        return {
-            "intent": "UNKNOWN",
-            "response": "I'm having trouble right now. Please call us directly or try again in a moment.",
-            "confidence": 0.0,
-            "data": {},
-        }
+        logger.warning("AI providers unavailable; using deterministic receptionist fallback.")
+        text = user_message.strip().lower()
+        data = self.extract_patient_data(user_message, conversation_history)
+        if any(word in text for word in ("hello", "hi", "namaste", "hey")) and not any(word in text for word in ("book", "appointment", "schedule")):
+            return {"intent": "GREETING", "response": "Namaste! I’m Vaidya AI. Would you like to book an appointment or ask about the clinic?", "language": "en", "confidence": 0.95, "data": data}
+        if any(word in text for word in ("cancel", "cancellation", "reschedule")):
+            return {"intent": "CANCEL", "response": "I can help with that. Please share your appointment ID or the phone number used for booking.", "language": "en", "confidence": 0.9, "data": data}
+        if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit")) or any(data.values()):
+            return {"intent": "BOOKING", "response": "Sure, I can help you book an appointment.", "language": "en", "confidence": 0.9, "data": data}
+        if any(word in text for word in ("hours", "timing", "open", "address", "location", "fee", "services")):
+            return {"intent": "FAQ", "response": self._faq_response(text), "language": "en", "confidence": 0.85, "data": data}
+        return {"intent": "UNKNOWN", "response": "I can help book an appointment or answer questions about our clinic. Which would you prefer?", "language": "en", "confidence": 0.4, "data": data}
+
+    def _faq_response(self, text: str) -> str:
+        info = self.clinic_info
+        if any(word in text for word in ("hours", "timing", "open")):
+            hours = info.get("hours") or info.get("timings")
+            if isinstance(hours, dict):
+                return "Our hours are Monday to Friday, 9 AM to 6 PM, and Saturday 10 AM to 3 PM. We’re closed Sundays."
+            return str(hours or "Please call the clinic for today’s timings.")
+        if any(word in text for word in ("address", "location")):
+            return str(info.get("address") or info.get("location") or "Please call the clinic for the address.")
+        if "fee" in text or "price" in text:
+            return str(info.get("fees") or info.get("pricing") or "Please call the clinic for fee details.")
+        return "I can share clinic timings, location, services, and fees. What would you like to know?"
 
 
 if __name__ == "__main__":
