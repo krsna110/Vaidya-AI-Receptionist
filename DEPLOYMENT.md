@@ -36,6 +36,9 @@ GROQ_API_KEY=<optional-groq-key>
 DATABASE_URL=<optional-production-db-url>
 FRONTEND_ORIGINS=https://your-frontend-domain.vercel.app
 GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
+APP_ENV=production
+ADMIN_USERNAME=<clinic-admin-username>
+ADMIN_PASSWORD=<strong-random-password>
 ```
 
 After backend deploys, test:
@@ -62,3 +65,5 @@ It should return:
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
 - Gemini may return quota errors if the API key has no remaining quota. The backend falls back to Groq, then to local safe responses.
 - SQLite works for demos, but use a managed database for real production usage.
+- The patient UI is served by the same FastAPI service at `/chat`; no separate Node frontend deployment is required.
+- In production, set `FRONTEND_ORIGINS` to the exact allowed origins (comma-separated); do not use `*`.

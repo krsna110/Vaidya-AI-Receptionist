@@ -26,6 +26,7 @@ Patient browser → `/chat` → `POST /webhook` → `StateManager` loads the ses
 - Render now deploys `medical-receptionist` directly as a Python web service.
 - Cancellation is session-owned for patients and admin-owned through a protected endpoint; basic rescheduling is implemented with explicit confirmation.
 - Booking validates Indian phone numbers, future dates, clinic hours, and active-slot conflicts; calendar failures are surfaced as non-successful local-only bookings.
+- The patient chat now presents a virtual receptionist disclaimer, guided quick actions, loading/error states, and duplicate-submit protection. Admin cancellation uses the authenticated admin endpoint.
 - Medical safety is intentionally limited to receptionist tasks; the agent must not diagnose or provide treatment advice.
 
 ## Local run
