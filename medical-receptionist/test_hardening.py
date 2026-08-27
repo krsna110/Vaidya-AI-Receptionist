@@ -24,6 +24,18 @@ class HardeningTests(unittest.TestCase):
         self.assertEqual(self.client.get("/chat").status_code, 200)
         self.assertEqual(self.client.get("/appointments").status_code, 401)
 
+    def test_admin_authentication_and_security_headers(self):
+        bad = self.client.post("/auth/token", data={"username": "test-admin", "password": "wrong"})
+        self.assertEqual(bad.status_code, 401)
+        good = self.client.post("/auth/token", data={"username": "test-admin", "password": "test-password"})
+        self.assertEqual(good.status_code, 200)
+        token = good.json()["access_token"]
+        self.assertEqual(self.client.get("/appointments", headers={"Authorization": f"Bearer {token}"}).status_code, 200)
+        self.assertEqual(self.client.get("/appointments", headers={"Authorization": "Bearer invalid"}).status_code, 401)
+        headers = self.client.get("/health").headers
+        self.assertEqual(headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(headers.get("x-frame-options"), "DENY")
+
     def test_booking_requires_confirmation_and_validates_phone(self):
         session = uuid.uuid4().hex
         for message in ("I want an appointment", "Ravi", "12345"):
@@ -65,6 +77,14 @@ class HardeningTests(unittest.TestCase):
             self.assertNotEqual(first.json()["session_id"], "client-choice")
             second = client.post("/webhook", json={"user_id": "another-client-choice", "message": "hello"})
             self.assertEqual(second.json()["session_id"], first.json()["session_id"])
+
+    def test_invalid_cookie_is_rotated_and_cannot_fix_session(self):
+        with TestClient(app) as client:
+            client.cookies.set("vaidya_patient_session", "tampered-token")
+            response = client.post("/webhook", json={"user_id": "attacker", "message": "hello"})
+            self.assertEqual(response.status_code, 200)
+            self.assertNotEqual(response.json()["session_id"], "attacker")
+            self.assertIn("vaidya_patient_session=", response.headers.get("set-cookie", ""))
 
     def test_voice_disabled_and_invalid_upload_rejected(self):
         response = self.client.post("/api/voice/transcribe?user_id=voice-test-123", files={"audio": ("note.webm", b"not-audio", "audio/webm")})

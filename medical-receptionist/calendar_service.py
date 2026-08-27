@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import logging
+from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -19,6 +20,7 @@ TOKEN_PATH = os.path.join(BASE_DIR, "token.json")
 CLIENT_SECRET_PATH = os.path.join(BASE_DIR, "client_secret.json")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+CLINIC_TIMEZONE = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
 
 class GoogleCalendarService:
     def __init__(self):
@@ -66,15 +68,12 @@ class GoogleCalendarService:
         if not self.service:
             return []
 
-        now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
-        end_of_day = datetime.datetime.combine(date, datetime.time(23, 59, 59)).isoformat() + "Z"
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        end_of_day = datetime.datetime.combine(date, datetime.time(23, 59, 59), tzinfo=CLINIC_TIMEZONE).astimezone(datetime.timezone.utc).isoformat()
         
         # Adjust start time to now if the date is today
-        start_time = max(datetime.datetime.combine(date, datetime.time(9, 0, 0)), datetime.datetime.utcnow())
-        if start_time.date() != date:
-            start_time = datetime.datetime.combine(date, datetime.time(9, 0, 0))
-        
-        start_time = start_time.isoformat() + "Z"
+        clinic_start = datetime.datetime.combine(date, datetime.time(9, 0, 0), tzinfo=CLINIC_TIMEZONE)
+        start_time = max(clinic_start, datetime.datetime.now(CLINIC_TIMEZONE)).astimezone(datetime.timezone.utc).isoformat()
 
         try:
             events_result = (
@@ -95,7 +94,7 @@ class GoogleCalendarService:
             BUSINESS_END_HOUR = 18  # 6 PM
 
             free_slots = []
-            current_time = datetime.datetime.combine(date, datetime.time(BUSINESS_START_HOUR, 0, 0))
+            current_time = datetime.datetime.combine(date, datetime.time(BUSINESS_START_HOUR, 0, 0), tzinfo=CLINIC_TIMEZONE)
             
             while current_time.hour < BUSINESS_END_HOUR or \
                   (current_time.hour == BUSINESS_END_HOUR and current_time.minute == 0 and current_time.second == 0):
@@ -111,8 +110,8 @@ class GoogleCalendarService:
                     event_start_str = event["start"].get("dateTime", event["start"].get("date"))
                     event_end_str = event["end"].get("dateTime", event["end"].get("date"))
 
-                    event_start = datetime.datetime.fromisoformat(event_start_str.replace('Z', '+00:00'))
-                    event_end = datetime.datetime.fromisoformat(event_end_str.replace('Z', '+00:00'))
+                    event_start = datetime.datetime.fromisoformat(event_start_str.replace('Z', '+00:00')).astimezone(CLINIC_TIMEZONE)
+                    event_end = datetime.datetime.fromisoformat(event_end_str.replace('Z', '+00:00')).astimezone(CLINIC_TIMEZONE)
 
                     # Check for overlap, considering both fixed slots and manual availability
                     # An event occupies the time if its start is before our slot_end_time and its end is after our current_time

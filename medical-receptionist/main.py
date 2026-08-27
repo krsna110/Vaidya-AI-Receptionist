@@ -5,6 +5,7 @@ import re
 import asyncio
 import threading
 import secrets
+import redis as redis_client
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -365,8 +366,8 @@ def create_appointment_from_booking_data(db: Session, data: dict, session_id: st
         appointment = models.Appointment(
             patient_id=patient.id,
             session_id=session_id,
-            start_time=datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None),
-            end_time=None,
+            start_time=appointment_dt,
+            end_time=appointment_dt + timedelta(minutes=30),
             description=reason,
             is_confirmed=True,
             status="confirmed",
@@ -530,7 +531,8 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("Permissions-Policy", "microphone=(self)")
     patient_session_id = getattr(request.state, "patient_session_id", None)
-    if patient_session_id and not request.cookies.get(auth.PATIENT_SESSION_COOKIE):
+    cookie_session_id = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE))
+    if patient_session_id and cookie_session_id != patient_session_id:
         response.set_cookie(
             auth.PATIENT_SESSION_COOKIE,
             auth.create_patient_session(patient_session_id),
@@ -584,6 +586,14 @@ async def readiness_check(db: Session = Depends(database.get_db)):
     """Readiness probe that checks the database without exposing configuration."""
     try:
         db.execute(text("SELECT 1"))
+        if APP_ENV == "production":
+            client = redis_client.Redis.from_url(
+                os.environ["REDIS_URL"], socket_connect_timeout=1, socket_timeout=1
+            )
+            try:
+                client.ping()
+            finally:
+                client.close()
         return {"status": "ready"}
     except Exception as exc:
         logger.error("Readiness check failed: %s", type(exc).__name__)

@@ -63,6 +63,13 @@ It should return:
 {"status":"healthy"}
 ```
 
+External verification (not run in this workspace): provision managed PostgreSQL
+and Redis, set the production variables, run `alembic upgrade head`, then call
+`/ready` and exercise booking/cancellation/rescheduling concurrently. Configure
+Google OAuth in the provider secret store and repeat those flows with a mock
+calendar first and the real calendar second; record API failures and confirm
+appointments remain marked `calendar_sync_failed` rather than falsely confirmed.
+
 ## 2. First deployment tests
 
 1. Open `https://your-backend-domain/health`.
@@ -81,3 +88,11 @@ It should return:
 - In production, set `FRONTEND_ORIGINS` to the exact allowed origins (comma-separated); do not use `*`.
 - Voice notes are optional. Local `faster-whisper` can be resource-heavy for Render; use a private hosted STT endpoint if needed and keep its token server-side.
 - LiveKit browser voice requires LiveKit Cloud or a separately hosted LiveKit server. Real mobile/landline calling additionally requires paid SIP/telephony service.
+
+## Recovery and rotation checklist
+
+- Configure managed PostgreSQL point-in-time recovery and daily backups; verify a restore at least monthly with `alembic upgrade head` against a restored copy.
+- Take a database backup before every migration. Roll back by restoring the backup or applying a reviewed Alembic downgrade; do not edit production tables manually.
+- Rotate `SECRET_KEY` to invalidate existing JWTs and patient cookies, then restart all web instances.
+- Rotate admin credentials, Redis credentials, and Google OAuth credentials through the hosting provider's secret store. Never commit replacement values.
+- Keep at least one previous application release available so a migration rollback can be coordinated with code rollback.
