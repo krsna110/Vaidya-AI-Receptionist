@@ -274,6 +274,10 @@ CLINIC CONTEXT:
             return {"intent": "CANCEL", "response": "I can help with that. Please share your appointment ID or the phone number used for booking.", "language": "en", "confidence": 0.9, "data": data}
         if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit", "अपॉइंटमेंट", "मुलाकात")) or any(data.values()):
             return {"intent": "BOOKING", "response": "Sure, I can help you book an appointment.", "language": "en", "confidence": 0.9, "data": data}
+        # During guided collection, a patient commonly replies with only a
+        # name. Keep that turn in the deterministic booking flow.
+        if re.fullmatch(r"[a-z][a-z .'-]{1,60}", text):
+            return {"intent": "BOOKING", "response": "Thanks. Could you share your contact number?", "language": "en", "confidence": 0.9, "data": {"name": text.title()}}
         if any(word in text for word in ("hours", "timing", "open", "address", "location", "fee", "services")):
             return {"intent": "FAQ", "response": self._faq_response(text), "language": "en", "confidence": 0.85, "data": data}
         return {"intent": "UNKNOWN", "response": "I can help book an appointment or answer questions about our clinic. Which would you prefer?", "language": "en", "confidence": 0.4, "data": data}

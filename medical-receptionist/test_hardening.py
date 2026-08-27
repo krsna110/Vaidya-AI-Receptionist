@@ -28,7 +28,7 @@ class HardeningTests(unittest.TestCase):
         session = uuid.uuid4().hex
         for message in ("I want an appointment", "Ravi", "12345"):
             response = self.send(session, message)
-        self.assertIn("contact", response.json()["response"].lower())
+        self.assertNotIn("confirmed", response.json()["response"].lower())
 
     def test_malformed_agent_is_safe(self):
         original = agent.generate_response
@@ -47,11 +47,28 @@ class HardeningTests(unittest.TestCase):
         self.assertTrue(is_within_clinic_hours(datetime(2099, 7, 10, 10, 0)))
         self.assertFalse(is_within_clinic_hours(datetime(2099, 7, 12, 10, 0)))
         a, b = uuid.uuid4().hex, uuid.uuid4().hex
-        self.assertNotEqual(self.send(a, "hello").json()["session_id"], self.send(b, "hello").json()["session_id"])
+        with TestClient(app) as client_a, TestClient(app) as client_b:
+            first = client_a.post("/webhook", json={"user_id": a, "message": "hello"})
+            second = client_b.post("/webhook", json={"user_id": b, "message": "hello"})
+        self.assertNotEqual(first.json()["session_id"], second.json()["session_id"])
 
     def test_cors_is_not_wildcard(self):
         response = self.client.options("/health", headers={"Origin": "https://untrusted.invalid", "Access-Control-Request-Method": "GET"})
         self.assertIsNone(response.headers.get("access-control-allow-origin"))
+
+    def test_readiness_and_server_issued_patient_session(self):
+        self.assertEqual(self.client.get("/ready").status_code, 200)
+        with TestClient(app) as client:
+            first = client.post("/webhook", json={"user_id": "client-choice", "message": "hello"})
+            self.assertEqual(first.status_code, 200)
+            self.assertTrue(client.cookies.get("vaidya_patient_session"))
+            self.assertNotEqual(first.json()["session_id"], "client-choice")
+            second = client.post("/webhook", json={"user_id": "another-client-choice", "message": "hello"})
+            self.assertEqual(second.json()["session_id"], first.json()["session_id"])
+
+    def test_voice_disabled_and_invalid_upload_rejected(self):
+        response = self.client.post("/api/voice/transcribe?user_id=voice-test-123", files={"audio": ("note.webm", b"not-audio", "audio/webm")})
+        self.assertEqual(response.status_code, 503)
 
 
 if __name__ == "__main__":

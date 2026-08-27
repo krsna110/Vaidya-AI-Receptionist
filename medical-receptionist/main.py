@@ -4,6 +4,7 @@ import os
 import re
 import asyncio
 import threading
+import secrets
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
@@ -38,8 +39,12 @@ if APP_ENV == "production" and not os.getenv("FRONTEND_ORIGINS"):
     raise RuntimeError("FRONTEND_ORIGINS must be configured in production")
 if APP_ENV == "production" and not os.getenv("DATABASE_URL"):
     raise RuntimeError("DATABASE_URL must be configured in production")
+if APP_ENV == "production" and not os.getenv("DATABASE_URL", "").startswith(("postgresql://", "postgresql+psycopg://", "postgres://")):
+    raise RuntimeError("Production DATABASE_URL must use PostgreSQL")
 if APP_ENV == "production" and not os.getenv("TRUSTED_HOSTS"):
     raise RuntimeError("TRUSTED_HOSTS must be configured in production")
+if APP_ENV == "production" and not os.getenv("REDIS_URL", "").startswith(("redis://", "rediss://")):
+    raise RuntimeError("Production REDIS_URL must use Redis for shared rate limits")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
@@ -434,8 +439,10 @@ class WebhookRequest(BaseModel):
 class StateResetRequest(BaseModel):
     user_id: str
 
-# ---------- Create database tables ----------
-Base.metadata.create_all(bind=engine)
+# ---------- Local/test schema bootstrap ----------
+# Production schema evolution is owned by Alembic (see alembic.ini).
+if APP_ENV != "production":
+    Base.metadata.create_all(bind=engine)
 
 
 def ensure_sqlite_schema_upgrades() -> None:
@@ -476,7 +483,8 @@ def ensure_sqlite_schema_upgrades() -> None:
         logger.error(f"Failed schema upgrade check: {e}", exc_info=True)
 
 
-ensure_sqlite_schema_upgrades()
+if APP_ENV != "production":
+    ensure_sqlite_schema_upgrades()
 # Do not log DATABASE_URL: production URLs can contain database credentials.
 
 # ---------- FastAPI app ----------
@@ -629,7 +637,7 @@ async def reset_user_state(
     current_user: auth.TokenData = Depends(auth.get_current_user),
 ):
     state_manager.reset_state(payload.user_id)
-    logger.info(f"State reset for user_id={payload.user_id}")
+    logger.info("Conversation state reset")
     return {"status": "ok", "user_id": payload.user_id, "state": "GREETING"}
 
 
@@ -676,7 +684,7 @@ async def login_for_access_token(
 
 
 # --- Rate Limiting ---
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address, storage_uri=os.getenv("REDIS_URL", "memory://"))
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -689,11 +697,11 @@ async def webhook_receiver(
     db: Session = Depends(database.get_db),
 ):
     """Receives incoming webhook events (e.g., from a messaging platform)."""
-    cookie_session = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE))
-    if cookie_session and payload.user_id and cookie_session != payload.user_id:
-        raise HTTPException(status_code=403, detail="Session mismatch")
-    user_id = cookie_session or payload.user_id
-    if not user_id or not re.fullmatch(r"[A-Za-z0-9_-]{8,120}", user_id):
+    cookie_session = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE)) or getattr(request.state, "patient_session_id", None)
+    # The cookie is authoritative. A client-provided identifier is only a
+    # legacy hint used to establish the first server-generated session.
+    user_id = cookie_session or secrets.token_urlsafe(24)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,120}", user_id):
         raise HTTPException(status_code=401, detail="Patient session required")
     request.state.patient_session_id = user_id
     message = (payload.message or "").strip()[:500]
@@ -833,7 +841,7 @@ async def webhook_receiver(
         data = {**deterministic_data, **extracted_patient_data}
 
     booking_states = {"COLLECT_INFO", "SUGGEST_SLOT", "CONFIRM", "BOOKING"}
-    if current_state in booking_states and intent in {"GREETING", "FAQ", "UNKNOWN"} and is_booking_message(message, data):
+    if current_state in booking_states and intent in {"GREETING", "FAQ", "UNKNOWN"} and (is_booking_message(message, data) or current_state in {"COLLECT_INFO", "BOOKING"}):
         intent = "BOOKING"
     elif intent in {"FAQ", "UNKNOWN"} and is_booking_message(message, data):
         intent = "BOOKING"
@@ -1016,7 +1024,7 @@ async def transcribe_voice_note(
     db: Session = Depends(database.get_db),
 ):
     """Transcribe a short voice note, then send the transcript through /webhook."""
-    user_id = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE)) or user_id
+    user_id = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE)) or secrets.token_urlsafe(24)
     if not user_id or not re.fullmatch(r"[A-Za-z0-9_-]{8,120}", user_id):
         raise HTTPException(status_code=401, detail="Patient session required")
     request.state.patient_session_id = user_id
@@ -1046,8 +1054,7 @@ async def transcribe_voice_note(
 async def create_voice_session(request: Request, user_id: str):
     """Create a short-lived LiveKit room token for browser voice mode."""
     cookie_session = auth.verify_patient_session(request.cookies.get(auth.PATIENT_SESSION_COOKIE))
-    if cookie_session and cookie_session != user_id:
-        raise HTTPException(status_code=403, detail="Session mismatch")
+    user_id = cookie_session or secrets.token_urlsafe(24)
     if not user_id or len(user_id) > 120:
         raise HTTPException(status_code=400, detail="Invalid session")
     try:

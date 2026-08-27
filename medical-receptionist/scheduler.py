@@ -7,8 +7,8 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
-from database import SessionLocal, engine
-from models import Appointment, Base
+from database import SessionLocal
+from models import Appointment
 from calendar_service import GoogleCalendarService
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,11 +27,6 @@ class Scheduler:
         except Exception as e:
             logger.warning(f"Calendar service unavailable in scheduler: {e}")
             self.calendar_service = None
-        self._create_db_tables()
-
-    def _create_db_tables(self):
-        # Ensure tables are created if they don't exist
-        Base.metadata.create_all(bind=engine)
 
     async def reminder_job(self):
         logger.info("Running reminder job...")

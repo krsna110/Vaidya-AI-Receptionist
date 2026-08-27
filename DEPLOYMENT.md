@@ -25,6 +25,9 @@ Start command:
 uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
+For Render, the checked-in `render.yaml` runs `alembic upgrade head` before
+starting Uvicorn. Keep migrations as the only production schema change path.
+
 Environment variables:
 
 ```text
@@ -33,7 +36,8 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 GEMINI_API_KEY=<optional-gemini-key>
 GROQ_API_KEY=<optional-groq-key>
-DATABASE_URL=<optional-production-db-url>
+DATABASE_URL=<managed-postgresql-url>
+REDIS_URL=<managed-redis-url>
 FRONTEND_ORIGINS=https://your-frontend-domain.vercel.app
 GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
 APP_ENV=production
@@ -71,6 +75,8 @@ It should return:
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
 - Gemini may return quota errors if the API key has no remaining quota. The backend falls back to Groq, then to local safe responses.
 - SQLite works for demos, but use a managed database for real production usage.
+- Production requires PostgreSQL and a shared Redis URL (`redis://` or
+  `rediss://`). The in-memory rate limiter is only a local-development fallback.
 - The patient UI is served by the same FastAPI service at `/chat`; no separate Node frontend deployment is required.
 - In production, set `FRONTEND_ORIGINS` to the exact allowed origins (comma-separated); do not use `*`.
 - Voice notes are optional. Local `faster-whisper` can be resource-heavy for Render; use a private hosted STT endpoint if needed and keep its token server-side.

@@ -38,6 +38,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 DATABASE_URL=sqlite:///./sql_app.db
 FRONTEND_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 TRUSTED_HOSTS=localhost,127.0.0.1,testserver
+REDIS_URL=memory://
 GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
 # Optional; without these keys the deterministic fallback is used:
 # GEMINI_API_KEY=...
@@ -49,6 +50,14 @@ Start from the `medical-receptionist` directory:
 ```powershell
 python -m uvicorn main:app --reload
 ```
+
+For a fresh production-style database, run migrations before starting the service:
+
+```powershell
+python -m alembic upgrade head
+```
+
+If migrating an existing database that already contains the baseline tables, back it up and mark the baseline once with `python -m alembic stamp 0001_initial`; subsequent schema changes should use `upgrade`, never `create_all`. Production requires PostgreSQL and a shared `REDIS_URL`; `memory://` is only for local development.
 
 Open:
 
@@ -112,6 +121,7 @@ The server signs the patient session into an HttpOnly, SameSite cookie after the
 - **Gemini/Groq:** set the corresponding API key in the environment. The app remains usable without either key.
 - **Google Calendar:** configure OAuth credentials outside Git and enable the flow only when deploying with a secure credential store. Never commit `client_secret.json` or `token.json`.
 - **SQLite:** suitable for a demo or single instance. Use a managed database for production multi-instance deployments.
+- **PostgreSQL:** supported for production with `postgresql+psycopg://...`; run `alembic upgrade head` before starting the web process.
 
 ## Deploy to Render
 

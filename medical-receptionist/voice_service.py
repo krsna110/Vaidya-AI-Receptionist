@@ -45,11 +45,27 @@ class SpeechToTextService:
         media_type = (content_type or "").split(";", 1)[0].lower()
         if media_type not in ALLOWED_AUDIO_TYPES:
             raise VoiceProviderError("Unsupported audio format")
+        if not self._looks_like_audio(audio_bytes, media_type):
+            raise VoiceProviderError("Audio content is invalid")
         if self.provider in {"local", "faster-whisper"}:
             return self._transcribe_local(audio_bytes, filename)
         if self.provider in {"huggingface", "hf"}:
             return self._transcribe_huggingface(audio_bytes, media_type)
         raise VoiceProviderError("Speech-to-text is not configured")
+
+    @staticmethod
+    def _looks_like_audio(audio_bytes: bytes, media_type: str) -> bool:
+        # Lightweight signature checks reject renamed text/executable files.
+        if media_type in {"audio/ogg"}:
+            return audio_bytes.startswith(b"OggS")
+        if media_type in {"audio/wav", "audio/x-wav"}:
+            return audio_bytes.startswith(b"RIFF") and audio_bytes[8:12] == b"WAVE"
+        if media_type in {"audio/mp4", "audio/mpeg"}:
+            return (len(audio_bytes) > 8 and audio_bytes[4:8] == b"ftyp") or audio_bytes.startswith(b"ID3")
+        # WebM/Matroska EBML header.
+        if media_type in {"audio/webm", "video/webm"}:
+            return audio_bytes.startswith(b"\x1a\x45\xdf\xa3")
+        return False
 
     def _transcribe_local(self, audio_bytes: bytes, filename: str | None) -> str:
         try:

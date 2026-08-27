@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: medical-receptionist
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: APP_ENV
         value: production
@@ -21,6 +21,8 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: TRUSTED_HOSTS
+        sync: false
+      - key: REDIS_URL
         sync: false
       - key: FRONTEND_ORIGINS
         sync: false
