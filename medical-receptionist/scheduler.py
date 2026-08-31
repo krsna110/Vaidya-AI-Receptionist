@@ -2,39 +2,37 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
-from database import SessionLocal, engine
-from models import Appointment, Base
+from database import SessionLocal
+from models import Appointment
 from calendar_service import GoogleCalendarService
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 logger = logging.getLogger(__name__)
+CLINIC_TIMEZONE = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
 
 
 class Scheduler:
     def __init__(self):
-        self.scheduler = AsyncIOScheduler()
+        self.enabled = os.getenv("SCHEDULER_ENABLED", "false").lower() == "true"
+        self.scheduler = AsyncIOScheduler(timezone=CLINIC_TIMEZONE)
         try:
             self.calendar_service = GoogleCalendarService()
         except Exception as e:
             logger.warning(f"Calendar service unavailable in scheduler: {e}")
             self.calendar_service = None
-        self._create_db_tables()
-
-    def _create_db_tables(self):
-        # Ensure tables are created if they don't exist
-        Base.metadata.create_all(bind=engine)
 
     async def reminder_job(self):
         logger.info("Running reminder job...")
         session = SessionLocal()
         try:
-            tomorrow = datetime.now().date() + timedelta(days=1)
+            tomorrow = datetime.now(CLINIC_TIMEZONE).date() + timedelta(days=1)
             appointments = (
                 session.query(Appointment)
                 .filter(
@@ -46,26 +44,15 @@ class Scheduler:
 
             for appt in appointments:
                 try:
-                    # Get patient info via relationship (may be None)
-                    patient_name = appt.patient.name if appt.patient else "Patient"
-                    patient_phone = appt.patient.phone_number if appt.patient else "N/A"
-
-                    reminder_message = (
-                        f"Reminder: Your appointment for {appt.reason} "
-                        f"is tomorrow, {appt.date} at {appt.time}."
-                    )
-                    logger.info(
-                        f"Reminder for {patient_name} ({patient_phone}): {reminder_message}"
-                    )
-
+                    # Delivery is intentionally delegated to a worker/provider;
+                    # this web process only records an idempotent queue state.
                     appt.reminder_status = "pending_reminder"
                     session.add(appt)
                     session.commit()
+                    logger.info("Reminder queued")
                 except Exception as e:
                     session.rollback()
-                    logger.error(
-                        f"Error processing reminder for appointment {appt.id}: {e}"
-                    )
+                    logger.error("Reminder processing failed: %s", type(e).__name__)
         except Exception as e:
             logger.error(f"Error in reminder job: {e}")
         finally:
@@ -75,7 +62,7 @@ class Scheduler:
         logger.info("Running follow-up job...")
         session = SessionLocal()
         try:
-            today = datetime.now().date()
+            today = datetime.now(CLINIC_TIMEZONE).date()
             appointments = (
                 session.query(Appointment)
                 .filter(
@@ -87,31 +74,22 @@ class Scheduler:
 
             for appt in appointments:
                 try:
-                    patient_name = appt.patient.name if appt.patient else "Patient"
-                    patient_phone = appt.patient.phone_number if appt.patient else "N/A"
-
-                    followup_message = (
-                        f"Hello {patient_name}, how was your {appt.reason} "
-                        f"appointment today? We appreciate your feedback."
-                    )
-                    logger.info(
-                        f"Follow-up for {patient_name} ({patient_phone}): {followup_message}"
-                    )
-
                     appt.followup_status = "pending_followup"
                     session.add(appt)
                     session.commit()
+                    logger.info("Follow-up queued")
                 except Exception as e:
                     session.rollback()
-                    logger.error(
-                        f"Error processing follow-up for appointment {appt.id}: {e}"
-                    )
+                    logger.error("Follow-up processing failed: %s", type(e).__name__)
         except Exception as e:
             logger.error(f"Error in follow-up job: {e}")
         finally:
             session.close()
 
     def start(self):
+        if not self.enabled:
+            logger.info("Scheduler disabled for this web process")
+            return
         if self.scheduler.running:
             logger.info("Scheduler already running; skipping start.")
             return
@@ -121,6 +99,8 @@ class Scheduler:
         self.scheduler.start()
 
     def shutdown(self):
+        if not self.enabled:
+            return
         if not self.scheduler.running:
             logger.info("Scheduler is not running; skipping shutdown.")
             return

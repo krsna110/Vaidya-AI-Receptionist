@@ -14,10 +14,12 @@ SQLALCHEMY_DATABASE_URL = os.getenv(
     f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}",
 ) or f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}"
 
-# Create the SQLAlchemy engine
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# Create the SQLAlchemy engine. SQLite needs the thread option for FastAPI;
+# PostgreSQL drivers reject that argument.
+engine_kwargs = {"pool_pre_ping": True}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_kwargs)
 
 # Create a SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

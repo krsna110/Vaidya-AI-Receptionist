@@ -3,27 +3,44 @@ import json
 import logging
 import os
 import re
+from typing import Literal
 
 from dotenv import load_dotenv
 from google import genai
 from groq import Groq
 from langdetect import detect
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
     print("WARNING: GROQ_API_KEY not set")
-if not JWT_SECRET:
-    print("WARNING: JWT_SECRET not set")
 
 logger = logging.getLogger(__name__)
 CLINIC_INFO_PATH = os.path.join(BASE_DIR, "data", "clinic_info.json")
+
+
+class PatientData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str | None = None
+    phone: str | None = None
+    date: str | None = None
+    time: str | None = None
+    reason: str | None = None
+
+
+class ReceptionResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    intent: Literal["BOOKING", "FAQ", "CANCEL", "RESCHEDULE", "GREETING", "UNKNOWN"] = "UNKNOWN"
+    response: str = ""
+    language: str = "en"
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    data: PatientData = Field(default_factory=PatientData)
 
 
 class Agent:
@@ -45,7 +62,7 @@ class Agent:
                 self.gemini_client = genai.Client(api_key=self.gemini_api_key)
                 logger.info("Gemini client initialized (google-genai SDK).")
             except Exception as e:
-                logger.warning(f"Could not initialise Gemini client: {e}")
+                logger.warning("Could not initialise Gemini client: %s", type(e).__name__)
 
         self.groq_client = None
         if self.groq_api_key:
@@ -53,7 +70,7 @@ class Agent:
                 self.groq_client = Groq(api_key=self.groq_api_key)
                 logger.info("Groq client initialized.")
             except Exception as e:
-                logger.warning(f"Could not initialise Groq client: {e}")
+                logger.warning("Could not initialise Groq client: %s", type(e).__name__)
 
         self.system_prompt = f"""You are Vaidya AI, an intelligent medical receptionist for
 Indian dental and medical clinics.
@@ -102,18 +119,25 @@ CLINIC CONTEXT:
             with open(CLINIC_INFO_PATH, "r", encoding="utf-8") as clinic_file:
                 return json.load(clinic_file)
         except Exception as e:
-            logger.warning(f"Could not load clinic info: {e}")
+            logger.warning("Could not load clinic info: %s", type(e).__name__)
             return {}
 
     def detect_language(self, text: str) -> str:
+        # Short mixed-script messages are frequently misclassified by statistical
+        # language detectors. Prefer explicit script/clinic markers first so the
+        # receptionist remains predictable for Hindi and Hinglish patients.
+        value = (text or "").strip().lower()
+        if re.search(r"[\u0900-\u097f]", value):
+            return "Hindi"
+        hinglish_markers = ("kya", "aap", "hai", "kaise", "mujhe", "kal", "baje", "chahiye", "karna")
+        if any(re.search(rf"\b{re.escape(word)}\b", value) for word in hinglish_markers):
+            return "Hinglish"
         try:
             lang = detect(text)
             if lang == "hi":
                 return "Hindi"
             if lang == "en":
                 return "English"
-            if any(word in text.lower() for word in ["kya", "aap", "hai", "kaise"]):
-                return "Hinglish"
             return "English"
         except Exception:
             return "English"
@@ -125,6 +149,11 @@ CLINIC CONTEXT:
         if match:
             return json.loads(match.group())
         return json.loads(cleaned)
+
+    @staticmethod
+    def _validate_response(payload: dict) -> dict:
+        parsed = ReceptionResponse.model_validate(payload)
+        return parsed.model_dump(exclude_none=True)
 
     def extract_patient_data(self, message: str, history: list | None = None) -> dict:
         if history is None:
@@ -155,13 +184,13 @@ CLINIC CONTEXT:
                 if extracted_name and extracted_name.lower() != "null":
                     name = extracted_name
             except Exception as e:
-                logger.warning(f"Gemini name extraction failed: {e}")
+                logger.warning("Gemini name extraction failed: %s", type(e).__name__)
 
         date_match = re.search(r"\b(today|tomorrow|\d{4}-\d{2}-\d{2})\b", message, re.IGNORECASE)
         if date_match:
             date = date_match.group(1)
 
-        time_match = re.search(r"\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\b", message, re.IGNORECASE)
+        time_match = re.search(r"(?<![-\d])\b(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.))\b", message, re.IGNORECASE)
         if time_match:
             time = time_match.group(1)
 
@@ -169,7 +198,7 @@ CLINIC CONTEXT:
         if reason_match:
             reason = reason_match.group(1).strip()
 
-        return {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}
+        return {key: value for key, value in {"name": name, "phone": phone, "date": date, "time": time, "reason": reason}.items() if value}
 
     def generate_response(self, user_message: str, conversation_history: list | None = None) -> dict:
         if conversation_history is None:
@@ -206,13 +235,13 @@ CLINIC CONTEXT:
                         parsed["language"] = detected_lang.lower()
                     if "confidence" not in parsed:
                         parsed["confidence"] = 0.9
-                    return parsed
+                    return self._validate_response(parsed)
 
                 return asyncio.run(asyncio.wait_for(gemini_call(), timeout=10.0))
             except TimeoutError:
                 logger.warning("Gemini call timed out after 10 seconds. Falling back to Groq...")
             except Exception as e:
-                logger.warning(f"Gemini failed: {e}. Falling back to Groq...")
+                logger.warning("Gemini failed: %s. Falling back to Groq...", type(e).__name__)
 
         if self.groq_client and self.groq_api_key:
             try:
@@ -230,17 +259,41 @@ CLINIC CONTEXT:
                     json_response["language"] = detected_lang.lower()
                 if "confidence" not in json_response:
                     json_response["confidence"] = 0.7
-                return json_response
+                return self._validate_response(json_response)
             except Exception as groq_e:
-                logger.error(f"Groq also failed: {groq_e}")
+                logger.error("Groq also failed: %s", type(groq_e).__name__)
 
-        logger.warning("Both AI services are unavailable; using hardcoded fallback response.")
-        return {
-            "intent": "UNKNOWN",
-            "response": "I'm having trouble right now. Please call us directly or try again in a moment.",
-            "confidence": 0.0,
-            "data": {},
-        }
+        logger.warning("AI providers unavailable; using deterministic receptionist fallback.")
+        text = user_message.strip().lower()
+        data = self.extract_patient_data(user_message, conversation_history)
+        if any(word in text for word in ("hello", "hi", "namaste", "hey", "नमस्ते", "नमस्कार")) and not any(word in text for word in ("book", "appointment", "schedule", "अपॉइंटमेंट")):
+            return {"intent": "GREETING", "response": "Namaste! I’m Vaidya AI. Would you like to book an appointment or ask about the clinic?", "language": "en", "confidence": 0.95, "data": data}
+        if "reschedule" in text or "reschedule" in text:
+            return {"intent": "RESCHEDULE", "response": "I can help reschedule that. Please provide the appointment ID, new date, and new time.", "language": "en", "confidence": 0.9, "data": data}
+        if any(word in text for word in ("cancel", "cancellation")):
+            return {"intent": "CANCEL", "response": "I can help with that. Please share your appointment ID or the phone number used for booking.", "language": "en", "confidence": 0.9, "data": data}
+        if any(word in text for word in ("book", "appointment", "schedule", "consult", "visit", "अपॉइंटमेंट", "मुलाकात")) or any(data.values()):
+            return {"intent": "BOOKING", "response": "Sure, I can help you book an appointment.", "language": "en", "confidence": 0.9, "data": data}
+        # During guided collection, a patient commonly replies with only a
+        # name. Keep that turn in the deterministic booking flow.
+        if re.fullmatch(r"[a-z][a-z .'-]{1,60}", text):
+            return {"intent": "BOOKING", "response": "Thanks. Could you share your contact number?", "language": "en", "confidence": 0.9, "data": {"name": text.title()}}
+        if any(word in text for word in ("hours", "timing", "open", "address", "location", "fee", "services")):
+            return {"intent": "FAQ", "response": self._faq_response(text), "language": "en", "confidence": 0.85, "data": data}
+        return {"intent": "UNKNOWN", "response": "I can help book an appointment or answer questions about our clinic. Which would you prefer?", "language": "en", "confidence": 0.4, "data": data}
+
+    def _faq_response(self, text: str) -> str:
+        info = self.clinic_info
+        if any(word in text for word in ("hours", "timing", "open")):
+            hours = info.get("hours") or info.get("timings")
+            if isinstance(hours, dict):
+                return "Our hours are Monday to Friday, 9 AM to 6 PM, and Saturday 10 AM to 3 PM. We’re closed Sundays."
+            return str(hours or "Please call the clinic for today’s timings.")
+        if any(word in text for word in ("address", "location")):
+            return str(info.get("address") or info.get("location") or "Please call the clinic for the address.")
+        if "fee" in text or "price" in text:
+            return str(info.get("fees") or info.get("pricing") or "Please call the clinic for fee details.")
+        return "I can share clinic timings, location, services, and fees. What would you like to know?"
 
 
 if __name__ == "__main__":

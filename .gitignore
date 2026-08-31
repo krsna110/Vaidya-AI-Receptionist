@@ -13,3 +13,4 @@ node_modules/
 dist/
 build/
 tsconfig.tsbuildinfo
+medical-receptionist/graphify-out/

@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import logging
+from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -19,6 +20,7 @@ TOKEN_PATH = os.path.join(BASE_DIR, "token.json")
 CLIENT_SECRET_PATH = os.path.join(BASE_DIR, "client_secret.json")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+CLINIC_TIMEZONE = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
 
 class GoogleCalendarService:
     def __init__(self):
@@ -26,8 +28,7 @@ class GoogleCalendarService:
         try:
             self.service = self._authenticate()
         except Exception as e:
-            print(f"Calendar not configured: {e}")
-            logger.warning(f"Calendar not configured: {e}")
+            logger.warning("Calendar not configured: %s", type(e).__name__)
             self.service = None
 
     def _authenticate(self):
@@ -60,22 +61,19 @@ class GoogleCalendarService:
             service = build("calendar", "v3", credentials=self.creds)
             return service
         except HttpError as error:
-            print(f"An error occurred while connecting to Google Calendar: {error}")
+            logger.warning("Google Calendar connection failed: %s", type(error).__name__)
             return None
 
     def get_available_slots(self, date: datetime.date, duration_minutes: int = 30) -> list:
         if not self.service:
             return []
 
-        now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
-        end_of_day = datetime.datetime.combine(date, datetime.time(23, 59, 59)).isoformat() + "Z"
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        end_of_day = datetime.datetime.combine(date, datetime.time(23, 59, 59), tzinfo=CLINIC_TIMEZONE).astimezone(datetime.timezone.utc).isoformat()
         
         # Adjust start time to now if the date is today
-        start_time = max(datetime.datetime.combine(date, datetime.time(9, 0, 0)), datetime.datetime.utcnow())
-        if start_time.date() != date:
-            start_time = datetime.datetime.combine(date, datetime.time(9, 0, 0))
-        
-        start_time = start_time.isoformat() + "Z"
+        clinic_start = datetime.datetime.combine(date, datetime.time(9, 0, 0), tzinfo=CLINIC_TIMEZONE)
+        start_time = max(clinic_start, datetime.datetime.now(CLINIC_TIMEZONE)).astimezone(datetime.timezone.utc).isoformat()
 
         try:
             events_result = (
@@ -96,7 +94,7 @@ class GoogleCalendarService:
             BUSINESS_END_HOUR = 18  # 6 PM
 
             free_slots = []
-            current_time = datetime.datetime.combine(date, datetime.time(BUSINESS_START_HOUR, 0, 0))
+            current_time = datetime.datetime.combine(date, datetime.time(BUSINESS_START_HOUR, 0, 0), tzinfo=CLINIC_TIMEZONE)
             
             while current_time.hour < BUSINESS_END_HOUR or \
                   (current_time.hour == BUSINESS_END_HOUR and current_time.minute == 0 and current_time.second == 0):
@@ -112,8 +110,8 @@ class GoogleCalendarService:
                     event_start_str = event["start"].get("dateTime", event["start"].get("date"))
                     event_end_str = event["end"].get("dateTime", event["end"].get("date"))
 
-                    event_start = datetime.datetime.fromisoformat(event_start_str.replace('Z', '+00:00'))
-                    event_end = datetime.datetime.fromisoformat(event_end_str.replace('Z', '+00:00'))
+                    event_start = datetime.datetime.fromisoformat(event_start_str.replace('Z', '+00:00')).astimezone(CLINIC_TIMEZONE)
+                    event_end = datetime.datetime.fromisoformat(event_end_str.replace('Z', '+00:00')).astimezone(CLINIC_TIMEZONE)
 
                     # Check for overlap, considering both fixed slots and manual availability
                     # An event occupies the time if its start is before our slot_end_time and its end is after our current_time
@@ -128,10 +126,10 @@ class GoogleCalendarService:
 
             return free_slots
         except HttpError as error:
-            print(f"An error occurred while retrieving free slots: {error}")
+            logger.warning("Calendar slot lookup failed: %s", type(error).__name__)
             return []
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.warning("Calendar slot lookup failed: %s", type(e).__name__)
             return []
 
     def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str or None:
@@ -141,9 +139,9 @@ class GoogleCalendarService:
         end_datetime = start_datetime + datetime.timedelta(minutes=30)
 
         event = {
-            "summary": f"Appointment: {reason} - {patient_name}",
-            "location": "Clinic Address Here",  # Placeholder
-            "description": f"Patient Phone: {phone}",
+            "summary": "Clinic appointment",
+            "location": "Clinic",
+            "description": "Booked consultation",
             "start": {
                 "dateTime": start_datetime.isoformat(),
                 "timeZone": "Asia/Kolkata",  # Or appropriate timezone
@@ -163,31 +161,38 @@ class GoogleCalendarService:
 
         try:
             event = self.service.events().insert(calendarId="primary", body=event).execute()
-            print(f"Event created: {event.get('htmlLink')}")
             return event.get("id")
         except HttpError as error:
-            print(f"An error occurred while booking the appointment: {error}")
+            logger.warning("Calendar booking failed: %s", type(error).__name__)
             return None
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.warning("Calendar booking failed: %s", type(e).__name__)
             return None
 
     def cancel_appointment(self, event_id: str) -> bool:
         if not self.service:
             return False
-
         try:
             self.service.events().delete(calendarId="primary", eventId=event_id).execute()
-            print(f"Event {event_id} cancelled successfully.")
             return True
         except HttpError as error:
-            if error.resp.status == 404:
-                print(f"Event with ID {event_id} not found.")
-            else:
-                print(f"An error occurred while cancelling the appointment: {error}")
+            return getattr(error.resp, "status", None) == 404
+        except Exception as error:
+            logger.warning("Calendar cancellation failed: %s", type(error).__name__)
             return False
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+
+    def reschedule_appointment(self, event_id: str, start_datetime: datetime.datetime) -> bool:
+        if not self.service:
+            return False
+        try:
+            end_datetime = start_datetime + datetime.timedelta(minutes=30)
+            self.service.events().update(calendarId="primary", eventId=event_id, body={
+                "start": {"dateTime": start_datetime.isoformat(), "timeZone": "Asia/Kolkata"},
+                "end": {"dateTime": end_datetime.isoformat(), "timeZone": "Asia/Kolkata"},
+            }).execute()
+            return True
+        except Exception as error:
+            logger.warning("Calendar rescheduling failed: %s", type(error).__name__)
             return False
 
     def suggest_best_slot(self, date: datetime.date, duration_minutes: int = 30) -> str or None:

@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import threading
 
 from sqlalchemy import Column, String, DateTime
 
@@ -23,45 +24,52 @@ class ConversationState(Base):
 
 class StateManager:
     def __init__(self):
-        self.db = SessionLocal()
+        self._lock = threading.RLock()
 
     def get_state(self, user_id: str):
-        state = (
-            self.db.query(ConversationState)
-            .filter(ConversationState.user_id == user_id)
-            .first()
-        )
-        if not state:
-            state = ConversationState(user_id=user_id, state="GREETING", data=json.dumps({"unknown_count": 0}))
-            self.db.add(state)
-            self.db.commit()
-            self.db.refresh(state)
-        return state
+        with self._lock:
+            db = SessionLocal()
+            try:
+                state = db.query(ConversationState).filter(ConversationState.user_id == user_id).first()
+                if not state:
+                    state = ConversationState(user_id=user_id, state="GREETING", data=json.dumps({"unknown_count": 0}))
+                    db.add(state); db.commit(); db.refresh(state)
+                return state
+            finally:
+                db.close()
 
     def set_state(self, user_id: str, new_state: str, data: dict = None):
-        state = self.get_state(user_id)
-        state.state = new_state
-        state.last_updated = datetime.datetime.now()
-        if data is not None:
-            # Merge new data with existing data if present
-            existing_data = json.loads(state.data or "{}")
-            merged_data = {**existing_data, **data}
-            state.data = json.dumps(merged_data)
-        self.db.commit()
-        self.db.refresh(state)
-        return state
+        with self._lock:
+            db = SessionLocal()
+            try:
+                state = db.query(ConversationState).filter(ConversationState.user_id == user_id).first()
+                if not state:
+                    state = ConversationState(user_id=user_id, state="GREETING", data="{}")
+                    db.add(state); db.flush()
+                state.state = new_state; state.last_updated = datetime.datetime.now()
+                if data is not None:
+                    try: existing_data = json.loads(state.data or "{}")
+                    except (TypeError, ValueError): existing_data = {}
+                    state.data = json.dumps({**existing_data, **data})
+                db.commit(); db.refresh(state); return state
+            finally:
+                db.close()
 
     def reset_state(self, user_id: str):
-        state = self.get_state(user_id)
-        state.state = "GREETING"
-        state.last_updated = datetime.datetime.now()
-        state.data = "{}"
-        self.db.commit()
-        self.db.refresh(state)
-        return state
+        with self._lock:
+            db = SessionLocal()
+            try:
+                state = db.query(ConversationState).filter(ConversationState.user_id == user_id).first()
+                if not state:
+                    state = ConversationState(user_id=user_id)
+                    db.add(state)
+                state.state = "GREETING"; state.last_updated = datetime.datetime.now(); state.data = "{}"
+                db.commit(); db.refresh(state); return state
+            finally:
+                db.close()
 
     def close(self):
-        self.db.close()
+        return None
 
 
 if __name__ == "__main__":

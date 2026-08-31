@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Vaidya AI Receptionist</title>
+  <desc id="desc">A calm medical scheduling assistant represented by a chat bubble and calendar.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081c24"/><stop offset="1" stop-color="#123b43"/></linearGradient>
+    <linearGradient id="accent" x1="0" x2="1"><stop stop-color="#63e6be"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+  <circle cx="1000" cy="80" r="180" fill="#38bdf8" opacity=".08"/><circle cx="1080" cy="340" r="230" fill="#5eead4" opacity=".06"/>
+  <g transform="translate(90 86)">
+    <rect width="255" height="190" rx="30" fill="#e6fffa"/>
+    <path d="M54 190v45l55-45" fill="#e6fffa"/>
+    <circle cx="72" cy="88" r="13" fill="#159a8c"/><circle cx="128" cy="88" r="13" fill="#159a8c"/><circle cx="184" cy="88" r="13" fill="#159a8c"/>
+    <path d="M65 135h125" stroke="#159a8c" stroke-width="12" stroke-linecap="round"/>
+    <rect x="150" y="-25" width="115" height="115" rx="22" fill="url(#accent)"/>
+    <path d="M172 18h71M172 45h71M172 72h43" stroke="#06333b" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="415" y="175" fill="#e6fffa" font-family="Arial, sans-serif" font-size="58" font-weight="700">Vaidya AI</text>
+  <text x="418" y="235" fill="#9ddbd3" font-family="Arial, sans-serif" font-size="32">Medical Receptionist MVP</text>
+  <text x="420" y="294" fill="#c8f7ef" font-family="Arial, sans-serif" font-size="22">Chat • Validate • Confirm • Schedule</text>
+</svg>

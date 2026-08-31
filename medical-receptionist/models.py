@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Index
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -20,10 +20,12 @@ class Appointment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
+    session_id = Column(String, index=True, nullable=True)
     start_time = Column(DateTime, default=datetime.datetime.now)
     end_time = Column(DateTime)
     description = Column(String, index=True)
     is_confirmed = Column(Boolean, default=False)
+    status = Column(String, default="confirmed", index=True)
     date = Column(String)  # Storing date as string for simplicity with current calendar_service
     time = Column(String)  # Storing time as string
     reason = Column(String) # Storing reason directly
@@ -32,6 +34,8 @@ class Appointment(Base):
     followup_status = Column(String, nullable=True) # e.g., "pending_followup", "sent", "failed"
 
     patient = relationship("Patient", back_populates="appointments")
+
+Index("ix_appointments_active_slot", "date", "time", "is_confirmed")
 
 
 
