@@ -59,11 +59,11 @@ class BookingHelperTests(unittest.TestCase):
             db.refresh(second_patient)
             first = models.Appointment(
                 patient_id=first_patient.id, date="2098-12-30", time="11:00",
-                reason="test", description="test", is_confirmed=True,
+                reason="test", description="test", is_confirmed=True, booking_status="confirmed",
             )
             second = models.Appointment(
                 patient_id=second_patient.id, date="2098-12-30", time="11:00",
-                reason="test", description="test", is_confirmed=True,
+                reason="test", description="test", is_confirmed=True, booking_status="confirmed",
             )
             db.add(first)
             db.commit()
