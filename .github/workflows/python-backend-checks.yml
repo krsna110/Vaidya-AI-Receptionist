@@ -20,6 +20,8 @@ jobs:
       ENVIRONMENT: test
       JWT_SECRET: test-only-secret-for-ci-not-production
       DATABASE_URL: sqlite:///./test_ci.db
+      WHATSAPP_VERIFY_TOKEN: test-verify
+      WHATSAPP_APP_SECRET: test-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
