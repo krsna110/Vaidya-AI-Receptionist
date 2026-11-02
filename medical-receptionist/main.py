@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import hashlib
+import hmac
 import re
 from datetime import datetime, timedelta, date, timezone
 from uuid import uuid4
@@ -76,6 +77,43 @@ logger = logging.getLogger(__name__)
 def session_log_ref(user_id: str) -> str:
     """Return a stable, non-reversible correlation ID instead of logging patient phone IDs."""
     return hashlib.sha256((user_id or "").encode("utf-8")).hexdigest()[:12]
+
+
+def verify_internal_webhook_request(request: Request, raw_body: bytes) -> None:
+    """Require a timestamped HMAC for production calls into the booking/AI pipeline."""
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    is_production = environment in {"production", "prod"}
+    secret = os.getenv("VAIDYA_INTERNAL_WEBHOOK_SECRET", "").strip()
+
+    if secret:
+        timestamp = request.headers.get("X-Vaidya-Timestamp", "")
+        signature = request.headers.get("X-Vaidya-Signature", "")
+        if not timestamp.isdigit():
+            raise HTTPException(status_code=401, detail="Invalid internal webhook signature.")
+        try:
+            timestamp_value = int(timestamp)
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Invalid internal webhook signature.")
+        if abs(datetime.now(timezone.utc).timestamp() - timestamp_value) > 300:
+            raise HTTPException(status_code=401, detail="Expired internal webhook signature.")
+        signed_payload = timestamp.encode("ascii") + b"." + raw_body
+        expected = "sha256=" + hmac.new(
+            secret.encode("utf-8"), signed_payload, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            raise HTTPException(status_code=401, detail="Invalid internal webhook signature.")
+        return
+
+    # Explicit opt-in for local development only. Never permit this bypass in production.
+    allow_local_unsigned = os.getenv("ALLOW_UNAUTHENTICATED_WEBHOOK", "false").strip().lower() == "true"
+    if not is_production and allow_local_unsigned:
+        return
+    if is_production:
+        raise HTTPException(
+            status_code=503,
+            detail="Internal webhook authentication is not configured.",
+        )
+    raise HTTPException(status_code=401, detail="Internal webhook authentication is required.")
 
 
 def normalize_phone(raw_phone: str) -> str:
@@ -734,7 +772,9 @@ async def webhook_receiver(
     payload: WebhookRequest,
     db: Session = Depends(database.get_db),
 ):
-    """Receives incoming webhook events (e.g., from a messaging platform)."""
+    """Receives internal chat requests after authentication by the trusted caller."""
+    raw_body = await request.body()
+    verify_internal_webhook_request(request, raw_body)
     user_id = payload.user_id
     message = (payload.message or "").strip()[:500]
     if not message:
