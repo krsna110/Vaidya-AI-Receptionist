@@ -554,10 +554,14 @@ async def startup_event():
             "ADMIN_USERNAME": os.getenv("ADMIN_USERNAME"),
             "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD"),
             "WEBHOOK_SHARED_SECRET": WEBHOOK_SHARED_SECRET,
+            "FRONTEND_ORIGINS": os.getenv("FRONTEND_ORIGINS"),
+            "DATABASE_URL": os.getenv("DATABASE_URL"),
         }
         missing = [key for key, value in required.items() if not value]
         if missing:
             raise RuntimeError("Missing required production environment variables: " + ", ".join(missing))
+        if not database.SQLALCHEMY_DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg://")):
+            raise RuntimeError("Production requires a managed PostgreSQL DATABASE_URL.")
 
     # Bootstrap the first admin only when explicit deployment credentials are set.
     admin_username = os.getenv("ADMIN_USERNAME", "").strip()
