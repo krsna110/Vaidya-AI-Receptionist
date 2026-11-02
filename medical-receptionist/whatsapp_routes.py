@@ -163,14 +163,37 @@ async def _send_text(to: str, text: str) -> None:
 
 
 async def _forward_to_existing_receptionist(user_id: str, message: str) -> str:
-    """Reuse the existing text webhook; this preserves booking and Gemini/Groq fallback."""
+    """Forward WhatsApp text through the authenticated internal booking boundary."""
     payload = {"user_id": user_id, "session_id": user_id, "message": message[:500]}
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    internal_secret = os.getenv("VAIDYA_INTERNAL_WEBHOOK_SECRET", "").strip()
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    is_production = environment in {"production", "prod"}
+
+    if internal_secret:
+        timestamp = str(int(datetime.now(timezone.utc).timestamp()))
+        signed_payload = timestamp.encode("ascii") + b"." + body
+        headers["X-Vaidya-Timestamp"] = timestamp
+        headers["X-Vaidya-Signature"] = "sha256=" + hmac.new(
+            internal_secret.encode("utf-8"), signed_payload, hashlib.sha256
+        ).hexdigest()
+    elif is_production or os.getenv("ALLOW_UNAUTHENTICATED_WEBHOOK", "false").strip().lower() != "true":
+        raise HTTPException(
+            status_code=503,
+            detail="Internal webhook authentication is not configured.",
+        )
+
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(35.0, connect=5.0)) as client:
-            response = await client.post(f"{INTERNAL_BASE_URL}/webhook", json=payload)
+            response = await client.post(
+                f"{INTERNAL_BASE_URL}/webhook", content=body, headers=headers
+            )
             response.raise_for_status()
             data = response.json()
             return str(data.get("response") or "I couldn't process that message. Please try again.")[:3500]
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("Forwarding WhatsApp text to existing /webhook failed: %s", exc)
         raise HTTPException(
