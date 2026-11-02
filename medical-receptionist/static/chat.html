@@ -238,18 +238,24 @@
         }
 
         async function authenticate() {
+            const username = sessionStorage.getItem('admin_username') || prompt('Admin username');
+            if (!username) throw new Error('Authentication cancelled');
+            const password = prompt('Admin password');
+            if (password === null || password === '') throw new Error('Authentication cancelled');
             try {
                 const response = await fetch('/auth/token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'username=admin&password=password'
+                    body: new URLSearchParams({ username, password })
                 });
-                if (!response.ok) throw new Error('Auth failed');
+                if (!response.ok) throw new Error('Invalid username or password');
                 const data = await response.json();
+                sessionStorage.setItem('admin_username', username);
                 jwtToken = data.access_token;
             } catch (err) {
                 console.error(err);
-                appendMessage('Unable to authenticate with the backend. Please try again later.', 'ai');
+                appendMessage('Unable to authenticate. Check your admin credentials and try again.', 'ai');
+                throw err;
             }
         }
 
