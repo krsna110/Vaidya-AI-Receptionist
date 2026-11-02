@@ -657,8 +657,16 @@ async def get_slots(
         )
 
 
+# --- Rate Limiting ---
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 @app.post("/auth/token", response_model=auth.Token)
+@limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(database.get_db),
 ):
@@ -699,12 +707,6 @@ async def require_webhook_access(request: Request):
         except HTTPException:
             pass
     raise credentials_exception
-
-
-# --- Rate Limiting ---
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.post("/webhook")
