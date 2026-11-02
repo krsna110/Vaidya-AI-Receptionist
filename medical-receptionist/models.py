@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, UniqueConstraint, Index, text
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -17,6 +17,16 @@ class Patient(Base):
 
 class Appointment(Base):
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index(
+            "uq_confirmed_appointment_slot",
+            "date",
+            "time",
+            unique=True,
+            sqlite_where=text("is_confirmed = 1"),
+            postgresql_where=text("is_confirmed IS TRUE"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
