@@ -68,3 +68,14 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.now)
+
+class WebhookEvent(Base):
+    """Minimal durable idempotency record for provider webhook message IDs."""
+    __tablename__ = "webhook_events"
+
+    message_id = Column(String, primary_key=True)
+    status = Column(String, nullable=False, default="processing", index=True)
+    attempts = Column(Integer, nullable=False, default=1)
+    received_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    last_error = Column(String, nullable=True)
