@@ -49,16 +49,15 @@ from database import engine, Base
 # ---------- Structured logging ----------
 def redact_sensitive_text(value: str) -> str:
     """Redact common patient/contact identifiers and credentials before log output."""
-    value = re.sub(r"(?<!\\d)\\+?(?:\\d[\\s().-]?){10,15}(?!\\d)", "[REDACTED_PHONE]", value)
-    value = re.sub(r"\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b", "[REDACTED_EMAIL]", value)
-    value = re.sub(r"(?i)\\bBearer\\s+[A-Za-z0-9._~+/=-]+", "Bearer [REDACTED]", value)
+    value = re.sub(r"(?<!\d)\+?(?:\d[\s().-]?){10,15}(?!\d)", "[REDACTED_PHONE]", value)
+    value = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", "[REDACTED_EMAIL]", value)
+    value = re.sub(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+", "Bearer [REDACTED]", value)
     value = re.sub(
-        r"(?i)\\b(access[_-]?token|api[_-]?key|client[_-]?secret|jwt[_-]?secret)\\s*[:=]\\s*[^,\\s;]+",
-        r"\\1=[REDACTED]",
+        r"(?i)\b(access[_-]?token|api[_-]?key|client[_-]?secret|jwt[_-]?secret)\s*[:=]\s*[^,\s;]+",
+        r"\1=[REDACTED]",
         value,
     )
     return value
-
 
 class JsonLogFormatter(logging.Formatter):
     """Emit one JSON object per log record for host log search and alerting."""
