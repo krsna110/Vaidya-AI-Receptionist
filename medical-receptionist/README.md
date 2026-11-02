@@ -98,6 +98,8 @@ GEMINI_MODEL="gemini-3.8-flash"
 GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
 JWT_SECRET="a-long-random-secret"
 ENVIRONMENT="development"
+VAIDYA_INTERNAL_WEBHOOK_SECRET=""
+ALLOW_UNAUTHENTICATED_WEBHOOK="true"
 FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
@@ -147,8 +149,9 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Request Body: OAuth2 form fields `username` and `password`.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
--   **POST `/webhook` (public chat endpoint)**
-    -   Description: Accepts bounded, rate-limited chat messages for public browser clients. It is not JWT-protected because the browser chat is public; rate limiting and request validation reduce abuse but do not replace a gateway/WAF.
+-   **POST `/webhook` (internal processing endpoint)**
+    -   Description: In production, requires a timestamped HMAC signature using `VAIDYA_INTERNAL_WEBHOOK_SECRET`. Direct unsigned calls are rejected, including when the local-development bypass flag is set. The Meta WhatsApp adapter signs its internal requests. For local development only, `ALLOW_UNAUTHENTICATED_WEBHOOK=true` permits unsigned calls when `ENVIRONMENT` is not `production` or `prod`.
+    -   Security note: Do not expose this endpoint as a public browser-chat API. A browser cannot safely hold a shared HMAC secret. If public website chat is needed, put it behind a dedicated public-chat endpoint with bot protection (for example, server-verified Turnstile), strict quotas, and a separate flow that cannot directly perform privileged booking actions.
     -   Request Body (JSON):
         ```json
         {
