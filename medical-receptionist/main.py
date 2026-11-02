@@ -284,6 +284,17 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         return None
     if appointment_start.time() < CLINIC_OPEN_TIME or appointment_end.time() > CLINIC_CLOSE_TIME:
         return None
+    if APP_ENV == "production" and (calendar_service is None or not calendar_service.service):
+        logger.warning("Booking rejected because the clinic calendar is unavailable")
+        return None
+    if calendar_service is not None and calendar_service.service:
+        requested_date = datetime.strptime(appt_date, "%Y-%m-%d").date()
+        available_slots = calendar_service.get_available_slots(
+            requested_date, APPOINTMENT_DURATION_MINUTES
+        )
+        if appt_time not in available_slots:
+            logger.info("Booking rejected because the requested slot is unavailable")
+            return None
 
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
     if patient is None and name:
@@ -298,6 +309,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
             models.Appointment.date == appt_date,
             models.Appointment.time == appt_time,
             models.Appointment.reason == reason,
+            models.Appointment.is_confirmed == True,
         )
         .first()
     )
@@ -863,12 +875,22 @@ async def webhook_receiver(
             if appt_id:
                 merged_data["appointment_id"] = appt_id
                 event_id = sync_appointment_to_google_calendar(db, appt_id)
-                if event_id:
+                if calendar_service is not None and calendar_service.service and not event_id:
+                    cancel_appointment_record(db, appt_id)
+                    new_state = "COLLECT_INFO"
+                    response_text = "I could not confirm the appointment with the clinic calendar. Please try again or contact the clinic."
+                elif APP_ENV == "production" and not event_id:
+                    cancel_appointment_record(db, appt_id)
+                    new_state = "COLLECT_INFO"
+                    response_text = "The clinic calendar is unavailable, so I could not confirm this appointment. Please try again later."
+                elif event_id:
                     merged_data["google_event_id"] = event_id
-                response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                    response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                else:
+                    response_text = f"Your appointment is saved locally (ID {appt_id}), but calendar sync is not configured. Please contact the clinic to verify the time."
             else:
                 new_state = "COLLECT_INFO"
-                response_text = "I could not create the appointment. Please choose a different date or time."
+                response_text = "I could not create the appointment. Please choose a different available date or time."
         except Exception as e:
             logger.error("Appointment creation failed | error_type=%s", type(e).__name__)
             new_state = "COLLECT_INFO"
