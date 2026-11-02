@@ -91,6 +91,23 @@ def session_log_ref(user_id: str) -> str:
     return hashlib.sha256((user_id or "").encode("utf-8")).hexdigest()[:12]
 
 
+def get_recent_conversation_history(db: Session, user_id: str, limit: int = 6) -> list[dict]:
+    """Return the latest messages in chronological order for the conversation prompt."""
+    if limit <= 0:
+        return []
+    recent = (
+        db.query(models.Conversation)
+        .filter(models.Conversation.session_id == user_id)
+        .order_by(models.Conversation.timestamp.desc(), models.Conversation.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {"role": ((conv.sender_type or conv.speaker or "user").lower()), "content": conv.message}
+        for conv in reversed(recent)
+    ]
+
+
 def verify_internal_webhook_request(request: Request, raw_body: bytes) -> None:
     """Require a timestamped HMAC for production calls into the booking/AI pipeline."""
     environment = os.getenv("ENVIRONMENT", "development").strip().lower()
@@ -821,15 +838,8 @@ async def webhook_receiver(
     logger.info("Webhook received | session_ref=%s", session_log_ref(user_id))
     logger.info("Webhook message received | state=%s | message_length=%s", current_state, len(message))
 
-    # Fetch last 6 messages for conversation history
-    conversation_history = [
-        {"role": ((conv.sender_type or conv.speaker or "user").lower()), "content": conv.message}
-        for conv in db.query(models.Conversation)
-        .filter(models.Conversation.session_id == user_id)
-        .order_by(models.Conversation.timestamp.asc())
-        .limit(6)
-        .all()
-    ]
+    # Fetch the latest 6 messages, preserving chronological order for the model.
+    conversation_history = get_recent_conversation_history(db, user_id, limit=6)
 
     # Public chat is intentionally unauthenticated for browser clients. Keep it
     # bounded and rate-limited; use a server-side gateway/WAF for stronger abuse
