@@ -14,6 +14,12 @@ SQLALCHEMY_DATABASE_URL = os.getenv(
     f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}",
 ) or f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}"
 
+# Prefer psycopg v3 regardless of whether a host supplies postgres:// or postgresql://.
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://" + SQLALCHEMY_DATABASE_URL[len("postgres://"):]
+elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://" + SQLALCHEMY_DATABASE_URL[len("postgresql://"):]
+
 # Create the SQLAlchemy engine
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
