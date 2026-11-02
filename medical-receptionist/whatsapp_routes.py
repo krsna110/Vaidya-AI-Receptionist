@@ -11,11 +11,13 @@ import hashlib
 import hmac
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
+from sqlalchemy.exc import IntegrityError
 from google import genai
 from google.genai import types
 
@@ -198,6 +200,70 @@ async def _save_image_conversation(user_id: str, user_message: str, answer: str)
         logger.exception("Could not save image interaction to conversation history")
 
 
+
+def _claim_whatsapp_message(message_id: str) -> bool:
+    """Claim a provider message once; failed/stale attempts can be retried."""
+    if not message_id:
+        return False
+    import database
+    import models
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    db = database.SessionLocal()
+    try:
+        record = (
+            db.query(models.ProcessedWebhookMessage)
+            .filter_by(provider="meta_whatsapp", message_id=message_id)
+            .first()
+        )
+        if record and record.status == "processed":
+            return False
+        if record and record.status == "processing" and now - record.updated_at < timedelta(minutes=5):
+            return False
+        if record:
+            record.status = "processing"
+            record.updated_at = now
+        else:
+            record = models.ProcessedWebhookMessage(
+                provider="meta_whatsapp",
+                message_id=message_id,
+                status="processing",
+                received_at=now,
+                updated_at=now,
+            )
+            db.add(record)
+        try:
+            db.commit()
+            return True
+        except IntegrityError:
+            db.rollback()
+            return False
+    finally:
+        db.close()
+
+
+def _finish_whatsapp_message(message_id: str, status: str) -> None:
+    import database
+    import models
+
+    db = database.SessionLocal()
+    try:
+        record = (
+            db.query(models.ProcessedWebhookMessage)
+            .filter_by(provider="meta_whatsapp", message_id=message_id)
+            .first()
+        )
+        if record:
+            record.status = status
+            record.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Could not update WhatsApp message processing status")
+    finally:
+        db.close()
+
+
 @router.get("/whatsapp/webhook", response_class=PlainTextResponse)
 async def verify_whatsapp_webhook(request: Request):
     """Meta webhook verification endpoint."""
@@ -227,9 +293,15 @@ async def receive_whatsapp_webhook(request: Request):
             value = change.get("value") or {}
             for message in value.get("messages", []) or []:
                 sender = str(message.get("from") or "").strip()
-                if not sender:
+                message_id = str(message.get("id") or "").strip()
+                if not sender or not message_id:
+                    logger.warning("Skipping WhatsApp message without sender or provider message ID")
+                    continue
+                if not _claim_whatsapp_message(message_id):
+                    logger.info("Skipping duplicate WhatsApp message")
                     continue
                 message_type = message.get("type")
+                processing_status = "processed"
                 try:
                     if message_type == "text":
                         text = str((message.get("text") or {}).get("body") or "").strip()
@@ -275,6 +347,7 @@ async def receive_whatsapp_webhook(request: Request):
                             "I can process text messages, voice notes, and images. Please send one of those formats.",
                         )
                 except HTTPException as exc:
+                    processing_status = "failed"
                     logger.warning("WhatsApp message processing failed: %s", exc.detail)
                     try:
                         await _send_text(
@@ -284,10 +357,13 @@ async def receive_whatsapp_webhook(request: Request):
                     except Exception:
                         logger.exception("Could not send WhatsApp error reply")
                 except Exception:
+                    processing_status = "failed"
                     logger.exception("Unexpected WhatsApp message processing error")
                     try:
                         await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
                     except Exception:
                         logger.exception("Could not send WhatsApp error reply")
+                finally:
+                    _finish_whatsapp_message(message_id, processing_status)
 
     return {"status": "accepted", "processed": processed}
