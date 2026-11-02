@@ -411,7 +411,11 @@ def sync_appointment_to_google_calendar(db: Session, appointment_id: int) -> str
         )
         return None
 
-    duration_minutes = int(os.getenv("APPOINTMENT_DURATION_MINUTES", "30"))
+    try:
+        duration_minutes = int(os.getenv("APPOINTMENT_DURATION_MINUTES", "30"))
+    except ValueError:
+        logger.error("Invalid APPOINTMENT_DURATION_MINUTES configuration")
+        return None
     available_slots = calendar_service.get_available_slots(start_dt.date(), duration_minutes)
     if start_dt.strftime("%H:%M") not in available_slots:
         logger.warning("Calendar slot is no longer available | appointment_id=%s", appointment.id)
