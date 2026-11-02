@@ -87,6 +87,8 @@ def upgrade() -> None:
         sa.Column("provider", sa.String(length=32), nullable=False),
         sa.Column("message_id", sa.String(length=255), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
+        sa.Column("payload", sa.Text(), nullable=True),
+        sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("received_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint("provider", "message_id", name="uq_processed_webhook_provider_message"),
