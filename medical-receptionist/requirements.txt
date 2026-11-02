@@ -17,3 +17,4 @@ google-auth-oauthlib>=1.0.0
 slowapi
 httpx
 redis>=5,<7
+psycopg[binary]>=3.2,<4
