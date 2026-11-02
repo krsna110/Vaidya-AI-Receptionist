@@ -16,7 +16,8 @@ This integration is an opt-in Meta WhatsApp Cloud API adapter. It does not repla
 Add these variables to the backend environment (do not commit secrets):
 
     GEMINI_API_KEY=...
-    GEMINI_MULTIMODAL_MODEL=gemini-2.0-flash
+    GEMINI_MODEL=gemini-3.8-flash
+    GEMINI_MULTIMODAL_MODEL=gemini-3.8-flash
     WHATSAPP_ACCESS_TOKEN=...
     WHATSAPP_PHONE_NUMBER_ID=...
     WHATSAPP_VERIFY_TOKEN=use-a-long-random-value
@@ -42,6 +43,6 @@ If the existing deployment starts main:app, change only its ASGI target to whats
 1. This adapter targets the Meta WhatsApp Cloud API webhook schema. If the WhatsApp number is connected through AiSensy or Twilio, use that provider's webhook/media format or adapt the inbound payload; do not paste Meta credentials into a different provider.
 2. The existing /webhook must be reachable at VAIDYA_INTERNAL_BASE_URL. The current repo's text webhook is not protected by JWT; keep it behind a trusted network or add provider authentication before exposing it publicly.
 3. Existing repo login currently contains a hard-coded admin credential in main.py; this feature does not change it. Fix that separately before production.
-4. Gemini multimodal requests need an enabled model and API quota. The existing Groq text fallback remains in use for text and transcribed audio through /webhook; the configured Groq model is not assumed to support image input.
+4. Gemini multimodal requests need an enabled model and API quota. The existing Groq text fallback remains in use for text and transcribed audio through /webhook; the configured Groq model is not assumed to support image input. Gemini 2.0 Flash was shut down on June 1, 2026, so the default model was updated to Gemini 3.8 Flash. If you override the model variables, use a model currently available to your Google AI Studio project.
 5. Before production, add a durable queue and webhook idempotency keyed by WhatsApp message ID to avoid duplicate work on retries. Test provider verification, signature rejection, media downloads, Hindi/Hinglish audio, appointment booking by voice, and existing regression tests.
 6. Medical images may contain sensitive personal data. Inform patients how data is processed, restrict logs, set retention rules, and get appropriate consent. This implementation does not persist raw media files.
