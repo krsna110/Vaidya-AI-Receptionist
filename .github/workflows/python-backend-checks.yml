@@ -1,0 +1,30 @@
+name: Python backend checks
+
+on:
+  push:
+    branches:
+      - main
+      - feat/whatsapp-voice-image
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: medical-receptionist
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: medical-receptionist/requirements.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile Python modules
+        run: python -m compileall -q .
+      - name: Run WhatsApp media unit tests
+        run: python -m unittest -v test_whatsapp_media.py
