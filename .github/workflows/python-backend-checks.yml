@@ -6,6 +6,7 @@ on:
       - main
       - feat/whatsapp-voice-image
       - fix/production-readiness-backlog
+      - fix/issue-5-internal-webhook-auth
   pull_request:
     branches:
       - main
