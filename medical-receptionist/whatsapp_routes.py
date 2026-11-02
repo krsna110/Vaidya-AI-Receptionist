@@ -32,7 +32,7 @@ VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
 APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MULTIMODAL_MODEL = os.getenv("GEMINI_MULTIMODAL_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
-INTERNAL_BASE_URL = os.getenv("VAIDYA_INTERNAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+INTERNAL_BASE_URL = (os.getenv("VAIDYA_INTERNAL_BASE_URL") or f"http://127.0.0.1:{os.getenv('PORT', '8000')}").rstrip("/")
 MAX_MEDIA_BYTES = 12 * 1024 * 1024
 MAX_WEBHOOK_BYTES = 1024 * 1024
 
@@ -260,14 +260,15 @@ def _claim_next_whatsapp_message() -> tuple[str, dict, int] | None:
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     db = database.SessionLocal()
     try:
-        if asyncio.get_event_loop_policy() and (asyncio.get_running_loop().time() - _last_queue_cleanup) > 3600:
+        loop_time = asyncio.get_running_loop().time()
+        if loop_time - _last_queue_cleanup > 3600:
             cutoff = now - timedelta(days=30)
             db.query(models.ProcessedWebhookMessage).filter(
                 models.ProcessedWebhookMessage.status.in_(["processed", "failed"]),
                 models.ProcessedWebhookMessage.received_at < cutoff,
             ).delete(synchronize_session=False)
             db.commit()
-            _last_queue_cleanup = asyncio.get_running_loop().time()
+            _last_queue_cleanup = loop_time
 
         record = (
             db.query(models.ProcessedWebhookMessage)
