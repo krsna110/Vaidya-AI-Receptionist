@@ -282,9 +282,11 @@ class GoogleCalendarService:
             return True
         except HttpError as error:
             if error.resp.status == 404:
-                logger.warning("Google Calendar event was not found during cancellation")
-            else:
-                logger.error("Google Calendar cancellation failed | status=%s", error.resp.status)
+                # DELETE is idempotent for our booking workflow: an event already
+                # removed in Calendar should not leave the local booking stuck as confirmed.
+                logger.info("Google Calendar event was already absent during cancellation")
+                return True
+            logger.error("Google Calendar cancellation failed | status=%s", error.resp.status)
             return False
         except Exception as e:
             logger.error("Google Calendar cancellation failed | error_type=%s", type(e).__name__)
