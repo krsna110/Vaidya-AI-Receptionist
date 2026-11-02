@@ -1,6 +1,7 @@
 """Deterministic unit tests for booking helpers; no live server or AI keys required."""
 import os
 import unittest
+from sqlalchemy.exc import IntegrityError
 
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("JWT_SECRET", "test-only-secret-for-unit-tests")
@@ -15,6 +16,8 @@ from main import (
     normalize_phone,
     parse_booking_datetime,
 )
+from database import SessionLocal
+import models
 
 
 class BookingHelperTests(unittest.TestCase):
@@ -43,6 +46,32 @@ class BookingHelperTests(unittest.TestCase):
         self.assertEqual(normalize_booking_date("2026-11-03"), "2026-11-03")
         self.assertEqual(normalize_booking_date("tomorrow"), normalize_booking_date("tomorrow"))
         self.assertEqual(normalize_booking_date(""), "")
+
+    def test_database_rejects_duplicate_confirmed_slots(self):
+        db = SessionLocal()
+        try:
+            first_patient = models.Patient(name="Slot Test One", phone_number="+919876543211")
+            second_patient = models.Patient(name="Slot Test Two", phone_number="+919876543212")
+            db.add_all([first_patient, second_patient])
+            db.commit()
+            db.refresh(first_patient)
+            db.refresh(second_patient)
+            first = models.Appointment(
+                patient_id=first_patient.id, date="2098-12-30", time="11:00",
+                reason="test", description="test", is_confirmed=True,
+            )
+            second = models.Appointment(
+                patient_id=second_patient.id, date="2098-12-30", time="11:00",
+                reason="test", description="test", is_confirmed=True,
+            )
+            db.add(first)
+            db.commit()
+            db.add(second)
+            with self.assertRaises(IntegrityError):
+                db.commit()
+            db.rollback()
+        finally:
+            db.close()
 
     def test_booking_detail_extraction_and_required_fields(self):
         details = extract_booking_details("My name is Rahul Sharma and phone 9876543210")
