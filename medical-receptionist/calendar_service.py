@@ -152,7 +152,14 @@ class GoogleCalendarService:
             logger.exception("Failed to calculate available clinic slots")
             return []
 
-    def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str | None:
+    def book_appointment(
+        self,
+        patient_name: str,
+        phone: str,
+        start_datetime: datetime.datetime,
+        reason: str,
+        booking_reference: str | None = None,
+    ) -> str | None:
         if not self.service:
             return None
 
@@ -171,10 +178,35 @@ class GoogleCalendarService:
             return None
 
         end_datetime = start_datetime + datetime.timedelta(minutes=duration)
+
+        # Recover an event created before a process crash or DB commit failure.
+        # The private property contains only the internal appointment ID, not PHI.
+        if booking_reference:
+            try:
+                existing = (
+                    self.service.events()
+                    .list(
+                        calendarId=self.calendar_id,
+                        privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
+                        maxResults=1,
+                        singleEvents=True,
+                    )
+                    .execute()
+                    .get("items", [])
+                )
+                if existing:
+                    return existing[0].get("id")
+            except Exception:
+                logger.exception("Could not check Calendar for an existing booking reference")
+                return None
+
         event_body = {
             "summary": f"Appointment: {reason} - {patient_name}",
             "location": os.getenv("CLINIC_ADDRESS", "").strip() or None,
             "description": "Patient contact details are stored in the clinic system.",
+            "extendedProperties": {
+                "private": {"vaidya_appointment_id": str(booking_reference)}
+            } if booking_reference else {},
             "start": {"dateTime": start_datetime.isoformat(), "timeZone": timezone_name},
             "end": {"dateTime": end_datetime.isoformat(), "timeZone": timezone_name},
             "reminders": {
