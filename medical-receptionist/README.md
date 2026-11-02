@@ -94,9 +94,12 @@ GROQ_API_KEY="YOUR_GROQ_API_KEY"
 DATABASE_URL="sqlite:///./sql_app.db"
 GEMINI_MODEL="gemini-3.8-flash"
 GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
+JWT_SECRET="a-long-random-secret"
+ENVIRONMENT="development"
+FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
--   **GEMINI_API_KEY**: Obtain this from the [Google AI Studio](https://makersuite.google.com/key).
+-   **GEMINI_API_KEY**: Obtain this from [Google AI Studio](https://aistudio.google.com/).
 -   **GROQ_API_KEY**: Obtain this from the [Groq Console](https://console.groq.com/keys).
 -   **DATABASE_URL**: The default SQLite path is already provided. You generally don't need to change this unless you're using a different database.
 
@@ -119,7 +122,7 @@ Open your web browser and navigate to:
 http://127.0.0.1:8000/chat
 ```
 
-The chat UI will automatically authenticate and start a conversation with the AI receptionist. The current `admin` / `password` login is demo-only; do not expose it publicly or use it for a production clinic.
+The chat UI can start a conversation with the AI receptionist. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
 
 ### 9. Test with Swagger UI (API Documentation)
 
@@ -138,14 +141,12 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Status Code: 200 OK
 
 -   **POST `/auth/token`**
-    -   Description: Authenticates a user and returns an access token.
-    -   Request Body (Form Data):
-        -   `username`: `admin`
-        -   `password`: `password`
+    -   Description: Authenticates a database-backed user and returns a short-lived access token. Bootstrap the first admin with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
+    -   Request Body: OAuth2 form fields `username` and `password`.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
--   **POST `/webhook` (JWT Protected)**
-    -   Description: Receives incoming webhook events (e.g., from a messaging platform) and processes them through the AI agent.
+-   **POST `/webhook` (public chat endpoint)**
+    -   Description: Accepts bounded, rate-limited chat messages for public browser clients. It is not JWT-protected because the browser chat is public; rate limiting and request validation reduce abuse but do not replace a gateway/WAF.
     -   Request Body (JSON):
         ```json
         {
