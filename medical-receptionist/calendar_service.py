@@ -76,7 +76,7 @@ class GoogleCalendarService:
             service = build("calendar", "v3", credentials=self.creds)
             return service
         except HttpError as error:
-            print(f"An error occurred while connecting to Google Calendar: {error}")
+            logger.error("Google Calendar connection failed | error_type=%s", type(error).__name__)
             return None
 
     def get_available_slots(self, date: datetime.date, duration_minutes: int | None = None) -> list[str]:
@@ -265,11 +265,11 @@ class GoogleCalendarService:
             event = self.service.events().insert(calendarId=self.calendar_id, body=event_body).execute()
             logger.info("Google Calendar event created")
             return event.get("id")
-        except HttpError:
-            logger.exception("Google Calendar rejected appointment creation")
+        except HttpError as exc:
+            logger.error("Google Calendar rejected appointment creation | error_type=%s", type(exc).__name__)
             return None
-        except Exception:
-            logger.exception("Unexpected error while creating Google Calendar event")
+        except Exception as exc:
+            logger.error("Google Calendar event creation failed | error_type=%s", type(exc).__name__)
             return None
 
     def cancel_appointment(self, event_id: str) -> bool:
@@ -278,16 +278,16 @@ class GoogleCalendarService:
 
         try:
             self.service.events().delete(calendarId=self.calendar_id, eventId=event_id).execute()
-            print(f"Event {event_id} cancelled successfully.")
+            logger.info("Google Calendar event cancelled")
             return True
         except HttpError as error:
             if error.resp.status == 404:
-                print(f"Event with ID {event_id} not found.")
+                logger.warning("Google Calendar event was not found during cancellation")
             else:
-                print(f"An error occurred while cancelling the appointment: {error}")
+                logger.error("Google Calendar cancellation failed | status=%s", error.resp.status)
             return False
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.error("Google Calendar cancellation failed | error_type=%s", type(e).__name__)
             return False
 
     def suggest_best_slot(self, date: datetime.date, duration_minutes: int = 30) -> str or None:
