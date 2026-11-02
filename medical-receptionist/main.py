@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import re
+import hmac
 from datetime import datetime, timedelta, date
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
@@ -25,7 +26,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY")
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+WEBHOOK_SHARED_SECRET = os.getenv("WEBHOOK_SHARED_SECRET", "")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
@@ -459,10 +462,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Webhook-Secret"],
 )
 
 # ---------- Initialize services ----------
@@ -481,6 +484,37 @@ scheduler_instance = Scheduler()
 
 @app.on_event("startup")
 async def startup_event():
+    if APP_ENV == "production":
+        required = {
+            "JWT_SECRET": JWT_SECRET,
+            "ADMIN_USERNAME": os.getenv("ADMIN_USERNAME"),
+            "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD"),
+            "WEBHOOK_SHARED_SECRET": WEBHOOK_SHARED_SECRET,
+        }
+        missing = [key for key, value in required.items() if not value]
+        if missing:
+            raise RuntimeError("Missing required production environment variables: " + ", ".join(missing))
+
+    # Bootstrap the first admin only when explicit deployment credentials are set.
+    admin_username = os.getenv("ADMIN_USERNAME", "").strip()
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    if admin_username and admin_password:
+        db = database.SessionLocal()
+        try:
+            existing_admin = db.query(models.User).filter(
+                models.User.username == admin_username
+            ).first()
+            if existing_admin is None:
+                db.add(models.User(
+                    username=admin_username,
+                    email=os.getenv("ADMIN_EMAIL", f"{admin_username}@localhost"),
+                    hashed_password=auth.hash_password(admin_password),
+                ))
+                db.commit()
+                logger.info("Bootstrapped initial admin account.")
+        finally:
+            db.close()
+
     scheduler_instance.start()
     logger.info("Scheduler started on startup.")
 
@@ -565,18 +599,43 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(database.get_db),
 ):
-    """Authenticates a user and returns an access token."""
-    if form_data.username != "admin" or form_data.password != "password":
+    """Authenticate against a database user with a stored password hash."""
+    user = db.query(models.User).filter(
+        models.User.username == form_data.username
+    ).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password or ""):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": form_data.username}, expires_delta=access_token_expires
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+async def require_webhook_access(request: Request):
+    """Allow authenticated dashboard users or trusted provider integrations."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    supplied_secret = request.headers.get("X-Webhook-Secret", "")
+    if WEBHOOK_SHARED_SECRET and supplied_secret and hmac.compare_digest(
+        supplied_secret, WEBHOOK_SHARED_SECRET
+    ):
+        return True
+    authorization = request.headers.get("Authorization", "")
+    if authorization.startswith("Bearer "):
+        try:
+            auth.verify_token(authorization[7:].strip(), credentials_exception)
+            return True
+        except HTTPException:
+            pass
+    raise credentials_exception
 
 
 # --- Rate Limiting ---
@@ -591,6 +650,7 @@ async def webhook_receiver(
     request: Request,
     payload: WebhookRequest,
     db: Session = Depends(database.get_db),
+    _authorized: bool = Depends(require_webhook_access),
 ):
     """Receives incoming webhook events (e.g., from a messaging platform)."""
     user_id = payload.user_id
