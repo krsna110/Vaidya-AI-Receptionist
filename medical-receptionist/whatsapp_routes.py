@@ -92,14 +92,24 @@ async def _download_media(media_id: str) -> tuple[bytes, str]:
         if mime not in IMAGE_TYPES | AUDIO_TYPES:
             raise HTTPException(status_code=415, detail="This image/audio format is not supported.")
 
-        response = await client.get(media_url, headers=headers)
-        response.raise_for_status()
-        content = response.content
-        if len(content) > MAX_MEDIA_BYTES:
-            raise HTTPException(status_code=413, detail="Media file is too large.")
-        if not content:
-            raise HTTPException(status_code=400, detail="The received media file is empty.")
-        return content, mime
+        async with client.stream("GET", media_url, headers=headers) as response:
+            response.raise_for_status()
+            content_length = response.headers.get("content-length")
+            if content_length and content_length.isdigit() and int(content_length) > MAX_MEDIA_BYTES:
+                raise HTTPException(status_code=413, detail="Media file is too large.")
+
+            chunks: list[bytes] = []
+            total_bytes = 0
+            async for chunk in response.aiter_bytes():
+                total_bytes += len(chunk)
+                if total_bytes > MAX_MEDIA_BYTES:
+                    raise HTTPException(status_code=413, detail="Media file is too large.")
+                chunks.append(chunk)
+
+            content = b"".join(chunks)
+            if not content:
+                raise HTTPException(status_code=400, detail="The received media file is empty.")
+            return content, mime
 
 
 async def _gemini_media_prompt(content: bytes, mime: str, prompt: str) -> str:
