@@ -163,9 +163,20 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Request Body: OAuth2 form fields `username` and `password`.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
+-   **POST `/chat` (existing browser chat UI)**
+    -   Description: Accepts the website chat UI requests without an HMAC secret and applies a 10-requests-per-minute rate limit. The existing chat page calls this endpoint.
+    -   Production security: Put this endpoint behind a server-side bot-verification layer (for example, Turnstile verified by the backend) and gateway/WAF controls before public launch. Rate limiting alone is not complete bot protection.
+    -   Request Body (JSON):
+        ```json
+        {
+            "user_id": "string (session identifier)",
+            "message": "string"
+        }
+        ```
+
 -   **POST `/webhook` (internal processing endpoint)**
-    -   Description: In production, requires a timestamped HMAC signature using `VAIDYA_INTERNAL_WEBHOOK_SECRET`. Direct unsigned calls are rejected, including when the local-development bypass flag is set. The Meta WhatsApp adapter signs its internal requests. For local development only, `ALLOW_UNAUTHENTICATED_WEBHOOK=true` permits unsigned calls when `ENVIRONMENT` is not `production` or `prod`.
-    -   Security note: Do not expose this endpoint as a public browser-chat API. A browser cannot safely hold a shared HMAC secret. If public website chat is needed, put it behind a dedicated public-chat endpoint with bot protection (for example, server-verified Turnstile), strict quotas, and a separate flow that cannot directly perform privileged booking actions.
+    -   Description: In production, requires a timestamped HMAC signature using `VAIDYA_INTERNAL_WEBHOOK_SECRET`. Direct unsigned calls are rejected, including when the local-development bypass flag is set. For local development only, `ALLOW_UNAUTHENTICATED_WEBHOOK=true` permits unsigned calls when `ENVIRONMENT` is not `production` or `prod`.
+    -   Security note: Do not call this endpoint directly from browser code. A browser cannot safely hold a shared HMAC secret.
     -   Request Body (JSON):
         ```json
         {
