@@ -37,7 +37,7 @@ Follow these steps to set up and run the project locally.
 
 ```bash
 git clone <repository_url>
-cd medical-ai-receptionist
+cd Vaidya-AI-Receptionist
 ```
 
 ### 2. Create a Python Virtual Environment
@@ -75,7 +75,7 @@ To use the Google Calendar API, you need to set up OAuth2 credentials:
 4.  Go to "APIs & Services" > "Credentials".
 5.  Click "+ Create Credentials" and choose "OAuth client ID".
 6.  Select "Desktop app" as the application type and give it a name.
-7.  After creating, download the `client_secret.json` file. **Rename it to `client_secret.json` and place it in the root directory of your project (alongside `main.py`, `agent.py`, etc.).**
+7.  After creating, download the `client_secret.json` file. **Rename it to `client_secret.json` and place it in `medical-receptionist/` alongside `main.py`, `agent.py`, etc.**
 8.  The first time `calendar_service.py` runs, it will open a browser window for you to authenticate with your Google account and grant permissions. After successful authentication, a `token.json` file will be created, storing your refresh token for future use.
 
 ### 6. Set up Environment Variables
@@ -109,7 +109,7 @@ uvicorn whatsapp_app:app --reload
 
 This starts the existing FastAPI app and registers the Meta WhatsApp media routes. Without WhatsApp credentials, the existing local API still starts; the WhatsApp webhook returns a configuration error until you set its credentials.
 
-This will start the development server. You should see output indicating that the server is running, typically at `http://127.0.0.1:8000`.
+The development server should be available at `http://127.0.0.1:8000`. For local use, run the command from the `medical-receptionist/` directory so the static files and `.env` are resolved correctly.
 
 ### 8. Access the Chat UI
 
@@ -119,7 +119,7 @@ Open your web browser and navigate to:
 http://127.0.0.1:8000/chat
 ```
 
-The chat UI will automatically authenticate and start a conversation with the AI receptionist.
+The chat UI will automatically authenticate and start a conversation with the AI receptionist. The current `admin` / `password` login is demo-only; do not expose it publicly or use it for a production clinic.
 
 ### 9. Test with Swagger UI (API Documentation)
 
