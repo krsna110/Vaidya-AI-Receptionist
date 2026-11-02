@@ -56,6 +56,22 @@
     </script>
 </head>
 <body class="flex min-h-screen">
+    <div id="loginPanel" class="fixed inset-0 z-[100] flex items-center justify-center bg-background p-4">
+        <form id="loginForm" class="glass-surface w-full max-w-md rounded-2xl p-8 space-y-5">
+            <div>
+                <h1 class="text-2xl font-bold text-on-surface">Admin sign in</h1>
+                <p class="mt-2 text-sm text-on-surface-variant">Use the clinic administrator account configured by your system administrator.</p>
+            </div>
+            <label class="block text-sm text-on-surface-variant">Username
+                <input id="loginUsername" autocomplete="username" required class="mt-2 w-full rounded-xl border border-white/10 bg-surface p-3 text-on-surface" />
+            </label>
+            <label class="block text-sm text-on-surface-variant">Password
+                <input id="loginPassword" type="password" autocomplete="current-password" required class="mt-2 w-full rounded-xl border border-white/10 bg-surface p-3 text-on-surface" />
+            </label>
+            <p id="loginError" role="alert" class="text-sm text-error"></p>
+            <button type="submit" class="w-full rounded-xl bg-primary px-5 py-3 font-bold text-on-primary">Sign in</button>
+        </form>
+    </div>
     <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-low/70 backdrop-blur-xl border-r border-white/10 shadow-xl flex flex-col p-6 gap-4 z-50 hidden md:flex">
         <div class="font-headline-lg text-primary mb-8 flex items-center gap-3">
             <span class="material-symbols-outlined text-4xl">clinical_notes</span>
@@ -212,13 +228,13 @@
         const appointmentsBody = document.querySelector('#appointmentsTable tbody');
         const patientsBody = document.querySelector('#patientsTable tbody');
 
-        async function authenticate() {
+        async function authenticate(username, password) {
             const response = await fetch('/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'username=admin&password=password'
+                body: new URLSearchParams({ username, password }).toString()
             });
-            if (!response.ok) throw new Error('Auth failed');
+            if (!response.ok) throw new Error(response.status === 401 ? 'Invalid username or password.' : 'Sign-in failed.');
             const data = await response.json();
             jwtToken = data.access_token;
         }
@@ -245,20 +261,28 @@
         }
 
         function renderAppointments(rows) {
-            appointmentsBody.innerHTML = '';
+            appointmentsBody.replaceChildren();
             rows.forEach((item) => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-white/5 transition-colors';
-                tr.innerHTML = `
-                    <td class="px-4 py-3">${item.id ?? ''}</td>
-                    <td class="px-4 py-3">${item.patient_id ?? ''}</td>
-                    <td class="px-4 py-3">${item.date ?? ''}</td>
-                    <td class="px-4 py-3">${item.time ?? ''}</td>
-                    <td class="px-4 py-3">${item.reason ?? item.description ?? ''}</td>
-                    <td class="px-4 py-3">${item.is_confirmed ? 'Yes' : 'No'}</td>
-                    <td class="px-4 py-3">${item.google_event_id ?? ''}</td>
-                    <td class="px-4 py-3"><button class="bg-error/10 text-error text-xs px-3 py-1 rounded-full" data-cancel-id="${item.id}">Cancel</button></td>
-                `;
+                const values = [
+                    item.id, item.patient_id, item.date, item.time, item.reason ?? item.description,
+                    item.is_confirmed ? 'Yes' : 'No', item.google_event_id
+                ];
+                values.forEach((value) => {
+                    const td = document.createElement('td');
+                    td.className = 'px-4 py-3';
+                    td.textContent = value == null ? '' : String(value);
+                    tr.appendChild(td);
+                });
+                const actionCell = document.createElement('td');
+                actionCell.className = 'px-4 py-3';
+                const button = document.createElement('button');
+                button.className = 'bg-error/10 text-error text-xs px-3 py-1 rounded-full';
+                button.dataset.cancelId = String(item.id);
+                button.textContent = 'Cancel';
+                actionCell.appendChild(button);
+                tr.appendChild(actionCell);
                 appointmentsBody.appendChild(tr);
             });
             appointmentsBody.querySelectorAll('button[data-cancel-id]').forEach((btn) => {
@@ -266,10 +290,7 @@
                     const id = btn.getAttribute('data-cancel-id');
                     try {
                         statusEl.textContent = `Cancelling appointment ${id}...`;
-                        await apiPost('/webhook', {
-                            user_id: 'admin_dashboard',
-                            message: `cancel appointment ${id}`
-                        });
+                        await apiPost(`/appointments/${encodeURIComponent(id)}/cancel`, {});
                         await loadAppointments();
                         statusEl.textContent = `Cancelled appointment ${id}`;
                     } catch (err) {
@@ -280,16 +301,16 @@
         }
 
         function renderPatients(rows) {
-            patientsBody.innerHTML = '';
+            patientsBody.replaceChildren();
             rows.forEach((item) => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-white/5 transition-colors';
-                tr.innerHTML = `
-                    <td class="px-4 py-3">${item.id ?? ''}</td>
-                    <td class="px-4 py-3">${item.name ?? ''}</td>
-                    <td class="px-4 py-3">${item.phone_number ?? ''}</td>
-                    <td class="px-4 py-3">${item.email ?? ''}</td>
-                `;
+                [item.id, item.name, item.phone_number, item.email].forEach((value) => {
+                    const td = document.createElement('td');
+                    td.className = 'px-4 py-3';
+                    td.textContent = value == null ? '' : String(value);
+                    tr.appendChild(td);
+                });
                 patientsBody.appendChild(tr);
             });
         }
@@ -313,14 +334,23 @@
         document.getElementById('refreshAppointmentsBtn').addEventListener('click', loadAppointments);
         document.getElementById('refreshPatientsBtn').addEventListener('click', loadPatients);
 
-        (async () => {
+        document.getElementById('loginForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = '';
             try {
-                await authenticate();
+                await authenticate(
+                    document.getElementById('loginUsername').value.trim(),
+                    document.getElementById('loginPassword').value
+                );
+                document.getElementById('loginPassword').value = '';
+                document.getElementById('loginPanel').remove();
+                statusEl.textContent = 'Signed in. Loading clinic data...';
                 await refreshAll();
             } catch (err) {
-                statusEl.textContent = `Dashboard error: ${err.message}`;
+                errorEl.textContent = err.message;
             }
-        })();
+        });
     </script>
 </body>
 </html>
