@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import logging
+from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -19,6 +20,28 @@ TOKEN_PATH = os.path.join(BASE_DIR, "token.json")
 CLIENT_SECRET_PATH = os.path.join(BASE_DIR, "client_secret.json")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
+CLINIC_TIMEZONE = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
+CLINIC_OPEN_TIME = datetime.time.fromisoformat(os.getenv("CLINIC_OPEN_TIME", "09:00"))
+CLINIC_CLOSE_TIME = datetime.time.fromisoformat(os.getenv("CLINIC_CLOSE_TIME", "18:00"))
+APPOINTMENT_DURATION_MINUTES = int(os.getenv("APPOINTMENT_DURATION_MINUTES", "30"))
+CLINIC_ADDRESS = os.getenv("CLINIC_ADDRESS", "").strip()
+
+if CLINIC_OPEN_TIME >= CLINIC_CLOSE_TIME:
+    raise ValueError("CLINIC_OPEN_TIME must be earlier than CLINIC_CLOSE_TIME")
+if APPOINTMENT_DURATION_MINUTES < 5 or APPOINTMENT_DURATION_MINUTES > 240:
+    raise ValueError("APPOINTMENT_DURATION_MINUTES must be between 5 and 240")
+
+
+def _calendar_datetime(value: str, all_day: bool = False) -> datetime.datetime:
+    """Parse Google Calendar event times into aware clinic-local datetimes."""
+    if all_day:
+        parsed_date = datetime.date.fromisoformat(value[:10])
+        return datetime.datetime.combine(parsed_date, datetime.time.min, tzinfo=CLINIC_TIMEZONE)
+    parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=CLINIC_TIMEZONE)
+    return parsed.astimezone(CLINIC_TIMEZONE)
 
 class GoogleCalendarService:
     def __init__(self):
@@ -63,94 +86,88 @@ class GoogleCalendarService:
             print(f"An error occurred while connecting to Google Calendar: {error}")
             return None
 
-    def get_available_slots(self, date: datetime.date, duration_minutes: int = 30) -> list:
+    def get_available_slots(self, date: datetime.date, duration_minutes: int | None = None) -> list:
+        """Return clinic-local slots that do not overlap existing calendar events."""
         if not self.service:
             return []
+        duration = duration_minutes or APPOINTMENT_DURATION_MINUTES
+        if duration < 5 or duration > 240:
+            raise ValueError("duration_minutes must be between 5 and 240")
 
-        now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
-        end_of_day = datetime.datetime.combine(date, datetime.time(23, 59, 59)).isoformat() + "Z"
-        
-        # Adjust start time to now if the date is today
-        start_time = max(datetime.datetime.combine(date, datetime.time(9, 0, 0)), datetime.datetime.utcnow())
-        if start_time.date() != date:
-            start_time = datetime.datetime.combine(date, datetime.time(9, 0, 0))
-        
-        start_time = start_time.isoformat() + "Z"
+        now = datetime.datetime.now(CLINIC_TIMEZONE)
+        if date < now.date():
+            return []
+        day_start = datetime.datetime.combine(date, CLINIC_OPEN_TIME, tzinfo=CLINIC_TIMEZONE)
+        day_end = datetime.datetime.combine(date, CLINIC_CLOSE_TIME, tzinfo=CLINIC_TIMEZONE)
+        query_start = max(day_start, now) if date == now.date() else day_start
+        if query_start >= day_end:
+            return []
 
         try:
             events_result = (
                 self.service.events()
                 .list(
                     calendarId="primary",
-                    timeMin=start_time,
-                    timeMax=end_of_day,
+                    timeMin=query_start.isoformat(),
+                    timeMax=day_end.isoformat(),
                     singleEvents=True,
                     orderBy="startTime",
                 )
                 .execute()
             )
-            events = events_result.get("items", [])
-
-            # Define business hours
-            BUSINESS_START_HOUR = 9
-            BUSINESS_END_HOUR = 18  # 6 PM
+            events = []
+            for event in events_result.get("items", []):
+                start_value = event.get("start", {})
+                end_value = event.get("end", {})
+                start_raw = start_value.get("dateTime") or start_value.get("date")
+                end_raw = end_value.get("dateTime") or end_value.get("date")
+                if not start_raw or not end_raw:
+                    continue
+                events.append((
+                    _calendar_datetime(start_raw, "dateTime" not in start_value),
+                    _calendar_datetime(end_raw, "dateTime" not in end_value),
+                ))
 
             free_slots = []
-            current_time = datetime.datetime.combine(date, datetime.time(BUSINESS_START_HOUR, 0, 0))
-            
-            while current_time.hour < BUSINESS_END_HOUR or \
-                  (current_time.hour == BUSINESS_END_HOUR and current_time.minute == 0 and current_time.second == 0):
-                slot_end_time = current_time + datetime.timedelta(minutes=duration_minutes)
-
-                # Ensure the slot is within business hours and on the specified date
-                if slot_end_time.hour > BUSINESS_END_HOUR or \
-                   (slot_end_time.hour == BUSINESS_END_HOUR and (slot_end_time.minute > 0 or slot_end_time.second > 0)):
-                    break
-
-                is_slot_free = True
-                for event in events:
-                    event_start_str = event["start"].get("dateTime", event["start"].get("date"))
-                    event_end_str = event["end"].get("dateTime", event["end"].get("date"))
-
-                    event_start = datetime.datetime.fromisoformat(event_start_str.replace('Z', '+00:00'))
-                    event_end = datetime.datetime.fromisoformat(event_end_str.replace('Z', '+00:00'))
-
-                    # Check for overlap, considering both fixed slots and manual availability
-                    # An event occupies the time if its start is before our slot_end_time and its end is after our current_time
-                    if not (event_end <= current_time or event_start >= slot_end_time):
-                        is_slot_free = False
-                        break
-                
-                if is_slot_free:
-                    free_slots.append(current_time.strftime("%H:%M"))
-                
-                current_time += datetime.timedelta(minutes=duration_minutes)
-
+            current = day_start
+            step = datetime.timedelta(minutes=duration)
+            while current + step <= day_end:
+                slot_end = current + step
+                if current >= query_start and all(
+                    event_end <= current or event_start >= slot_end
+                    for event_start, event_end in events
+                ):
+                    free_slots.append(current.strftime("%H:%M"))
+                current += step
             return free_slots
-        except HttpError as error:
-            print(f"An error occurred while retrieving free slots: {error}")
+        except HttpError:
+            logger.exception("Google Calendar failed while retrieving available slots")
             return []
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            logger.exception("Unexpected error while calculating available slots")
             return []
 
-    def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str or None:
+    def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str | None:
         if not self.service:
             return None
 
-        end_datetime = start_datetime + datetime.timedelta(minutes=30)
+        if start_datetime.tzinfo is None:
+            start_datetime = start_datetime.replace(tzinfo=CLINIC_TIMEZONE)
+        else:
+            start_datetime = start_datetime.astimezone(CLINIC_TIMEZONE)
+        end_datetime = start_datetime + datetime.timedelta(minutes=APPOINTMENT_DURATION_MINUTES)
 
         event = {
             "summary": f"Appointment: {reason} - {patient_name}",
-            "location": "Clinic Address Here",  # Placeholder
-            "description": f"Patient Phone: {phone}",
+            "location": CLINIC_ADDRESS or None,
+            "description": f"Appointment reason: {reason}",
             "start": {
                 "dateTime": start_datetime.isoformat(),
-                "timeZone": "Asia/Kolkata",  # Or appropriate timezone
+                "timeZone": CLINIC_TIMEZONE.key,
             },
             "end": {
                 "dateTime": end_datetime.isoformat(),
-                "timeZone": "Asia/Kolkata",
+                "timeZone": CLINIC_TIMEZONE.key,
             },
             "reminders": {
                 "useDefault": False,
@@ -162,14 +179,14 @@ class GoogleCalendarService:
         }
 
         try:
-            event = self.service.events().insert(calendarId="primary", body=event).execute()
-            print(f"Event created: {event.get('htmlLink')}")
-            return event.get("id")
-        except HttpError as error:
-            print(f"An error occurred while booking the appointment: {error}")
+            created = self.service.events().insert(calendarId="primary", body=event).execute()
+            logger.info("Google Calendar event created for appointment")
+            return created.get("id")
+        except HttpError:
+            logger.exception("Google Calendar failed while booking an appointment")
             return None
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            logger.exception("Unexpected error while booking an appointment")
             return None
 
     def cancel_appointment(self, event_id: str) -> bool:
