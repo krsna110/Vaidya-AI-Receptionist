@@ -71,6 +71,48 @@ class CalendarSlotTests(unittest.TestCase):
             "vaidya_appointment_id=appointment-123",
         )
 
+    def test_working_days_and_holidays_close_the_schedule(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+        future_day = datetime.now(ZoneInfo("Asia/Kolkata")).date() + timedelta(days=10)
+        keys = ("CLINIC_WORKING_DAYS", "CLINIC_HOLIDAYS")
+        original = {key: os.environ.get(key) for key in keys}
+        try:
+            os.environ["CLINIC_WORKING_DAYS"] = str((future_day.weekday() + 1) % 7)
+            os.environ["CLINIC_HOLIDAYS"] = ""
+            self.assertEqual(service.get_available_slots(future_day), [])
+
+            os.environ["CLINIC_WORKING_DAYS"] = "0,1,2,3,4,5,6"
+            os.environ["CLINIC_HOLIDAYS"] = future_day.isoformat()
+            self.assertEqual(service.get_available_slots(future_day), [])
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+    def test_configured_break_removes_overlapping_slots(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+        future_day = datetime.now(ZoneInfo("Asia/Kolkata")).date() + timedelta(days=10)
+        keys = ("CLINIC_OPEN_HOUR", "CLINIC_CLOSE_HOUR", "APPOINTMENT_DURATION_MINUTES", "CLINIC_BREAKS")
+        original = {key: os.environ.get(key) for key in keys}
+        try:
+            os.environ["CLINIC_OPEN_HOUR"] = "9"
+            os.environ["CLINIC_CLOSE_HOUR"] = "11"
+            os.environ["APPOINTMENT_DURATION_MINUTES"] = "30"
+            os.environ["CLINIC_BREAKS"] = "09:30-10:00"
+            self.assertEqual(service.get_available_slots(future_day), ["09:00", "10:00", "10:30"])
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
     def test_invalid_clinic_timezone_fails_closed(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
         service.calendar_id = "primary"
