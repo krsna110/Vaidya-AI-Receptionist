@@ -15,6 +15,7 @@ from main import (
     normalize_booking_time,
     normalize_phone,
     parse_booking_datetime,
+    create_appointment_from_booking_data,
 )
 from database import SessionLocal
 import models
@@ -78,6 +79,47 @@ class BookingHelperTests(unittest.TestCase):
         self.assertEqual(details.get("name"), "Rahul Sharma")
         self.assertEqual(details.get("phone"), "9876543210")
         self.assertEqual(set(missing_booking_fields({})), {"name", "phone", "date", "time", "reason"})
+
+    def test_replaying_booking_request_reuses_pending_reservation(self):
+        db = SessionLocal()
+        phone = "+919876543298"
+        slot_date = "2098-12-29"
+        try:
+            # Keep the test repeatable when run more than once against a local DB.
+            old_patient = db.query(models.Patient).filter_by(phone_number=phone).first()
+            if old_patient:
+                db.query(models.Appointment).filter_by(patient_id=old_patient.id).delete()
+                db.delete(old_patient)
+                db.commit()
+
+            patient = models.Patient(name="Idempotency Test", phone_number=phone)
+            db.add(patient)
+            db.commit()
+            first_id = create_appointment_from_booking_data(db, {
+                "name": "Idempotency Test",
+                "phone": phone,
+                "date": slot_date,
+                "time": "11:30",
+                "reason": "idempotency regression test",
+            })
+            second_id = create_appointment_from_booking_data(db, {
+                "name": "Idempotency Test",
+                "phone": phone,
+                "date": slot_date,
+                "time": "11:30",
+                "reason": "idempotency regression test",
+            })
+            self.assertIsNotNone(first_id)
+            self.assertEqual(first_id, second_id)
+            count = db.query(models.Appointment).filter_by(
+                patient_id=patient.id, date=slot_date, time="11:30"
+            ).count()
+            self.assertEqual(count, 1)
+            reservation = db.query(models.Appointment).filter_by(id=first_id).one()
+            self.assertEqual(reservation.booking_status, "pending")
+            self.assertFalse(reservation.is_confirmed)
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":
