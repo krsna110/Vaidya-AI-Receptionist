@@ -26,5 +26,5 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Compile Python modules
         run: python -m compileall -q .
-      - name: Run WhatsApp media unit tests
-        run: python -m unittest -v test_whatsapp_media.py
+      - name: Run backend and WhatsApp tests
+        run: python -m unittest -v test_whatsapp_media test_whatsapp_app
