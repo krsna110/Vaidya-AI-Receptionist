@@ -25,12 +25,32 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_MULTIMODAL_MODEL
+        value: gemini-3.8-flash
+      - key: VAIDYA_INTERNAL_WEBHOOK_SECRET
+        generateValue: true
+      - key: ALLOW_UNAUTHENTICATED_WEBHOOK
+        value: "false"
+      - key: CLINIC_NAME
+        sync: false
+      - key: CLINIC_ADDRESS
+        sync: false
       - key: CLINIC_TIMEZONE
         value: Asia/Kolkata
       - key: CLINIC_OPEN_HOUR
         value: "9"
       - key: CLINIC_CLOSE_HOUR
         value: "18"
+      - key: CLINIC_WORKING_DAYS
+        value: "0,1,2,3,4,5,6"
+      - key: CLINIC_HOLIDAYS
+        sync: false
+      - key: CLINIC_BREAKS
+        sync: false
       - key: APPOINTMENT_DURATION_MINUTES
         value: "30"
       - key: GOOGLE_CALENDAR_ID
