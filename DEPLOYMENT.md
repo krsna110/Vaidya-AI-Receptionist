@@ -26,7 +26,7 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
 ```
 
 Set these environment variables in the hosting provider's secret/configuration UI. Never commit real values:
@@ -72,6 +72,6 @@ After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exa
 ## Safety and rollback
 
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
-- Take a database backup before migrations and retain the previous backend release for rollback.
+- Take a database backup before migrations and retain the previous backend release for rollback. For a new empty database, the startup command applies all migrations automatically. For an existing database created before Alembic was added, take a backup, verify the schema, run `alembic stamp 0001_initial` from `medical-receptionist/`, then run `alembic upgrade head`; do not stamp an unverified database.
 - Use staging credentials and synthetic patient data for tests. Do not use real patient records in CI.
 - The GitHub Actions suite does not verify live Meta delivery, real AI-provider quotas, or end-to-end Google Calendar writes; those require staging credentials and manual verification.
