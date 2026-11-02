@@ -156,7 +156,7 @@ CLINIC CONTEXT:
                 if extracted_name and extracted_name.lower() != "null":
                     name = extracted_name
             except Exception as e:
-                logger.warning(f"Gemini name extraction failed: {e}")
+                logger.warning("Gemini name extraction failed | error_type=%s", type(e).__name__)
 
         date_match = re.search(r"\b(today|tomorrow|\d{4}-\d{2}-\d{2})\b", message, re.IGNORECASE)
         if date_match:
@@ -233,7 +233,7 @@ CLINIC CONTEXT:
                     json_response["confidence"] = 0.7
                 return json_response
             except Exception as groq_e:
-                logger.error(f"Groq also failed: {groq_e}")
+                logger.error("Groq fallback failed | error_type=%s", type(groq_e).__name__)
 
         logger.warning("Both AI services are unavailable; using hardcoded fallback response.")
         return {
