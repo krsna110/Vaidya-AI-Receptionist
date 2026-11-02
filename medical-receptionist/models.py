@@ -74,8 +74,9 @@ class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
     message_id = Column(String, primary_key=True)
-    status = Column(String, nullable=False, default="processing", index=True)
-    attempts = Column(Integer, nullable=False, default=1)
+    status = Column(String, nullable=False, default="queued", index=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    payload_json = Column(Text, nullable=True)
     received_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     last_error = Column(String, nullable=True)
