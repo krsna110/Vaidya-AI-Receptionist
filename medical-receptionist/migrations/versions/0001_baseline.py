@@ -51,6 +51,14 @@ def upgrade():
         Column("speaker", String(), nullable=True),
         Column("message", Text(), nullable=True),
     ])
+    _add_missing_columns(connection, "webhook_events", [
+        Column("status", String(), nullable=True),
+        Column("attempts", Integer(), nullable=True),
+        Column("payload_json", Text(), nullable=True),
+        Column("received_at", DateTime(), nullable=True),
+        Column("updated_at", DateTime(), nullable=True),
+        Column("last_error", String(), nullable=True),
+    ])
 
     # Preserve the oldest active booking if a legacy database already contains
     # duplicate confirmed slots, then let metadata create the partial unique index.
