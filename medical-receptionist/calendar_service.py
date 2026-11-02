@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -24,6 +25,7 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 class GoogleCalendarService:
     def __init__(self):
         self.creds = None
+        self.calendar_id = os.getenv("GOOGLE_CALENDAR_ID", "primary").strip() or "primary"
         try:
             self.service = self._authenticate()
         except Exception as e:
@@ -32,6 +34,19 @@ class GoogleCalendarService:
             self.service = None
 
     def _authenticate(self):
+        # Production deployments should use a service account shared with the clinic calendar.
+        service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+        if service_account_json:
+            try:
+                info = json.loads(service_account_json)
+                self.creds = service_account.Credentials.from_service_account_info(
+                    info, scopes=SCOPES
+                )
+                return build("calendar", "v3", credentials=self.creds)
+            except Exception as exc:
+                raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON is invalid or cannot initialize Calendar.") from exc
+
+        # Local development may use the desktop OAuth flow and token.json.
         # The file token.json stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
@@ -96,7 +111,7 @@ class GoogleCalendarService:
             events_result = (
                 self.service.events()
                 .list(
-                    calendarId="primary",
+                    calendarId=self.calendar_id,
                     timeMin=day_start.isoformat(),
                     timeMax=day_end.isoformat(),
                     singleEvents=True,
@@ -173,7 +188,7 @@ class GoogleCalendarService:
             event_body.pop("location")
 
         try:
-            event = self.service.events().insert(calendarId="primary", body=event_body).execute()
+            event = self.service.events().insert(calendarId=self.calendar_id, body=event_body).execute()
             logger.info("Google Calendar event created")
             return event.get("id")
         except HttpError:
@@ -188,7 +203,7 @@ class GoogleCalendarService:
             return False
 
         try:
-            self.service.events().delete(calendarId="primary", eventId=event_id).execute()
+            self.service.events().delete(calendarId=self.calendar_id, eventId=event_id).execute()
             print(f"Event {event_id} cancelled successfully.")
             return True
         except HttpError as error:
