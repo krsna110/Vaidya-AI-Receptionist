@@ -101,18 +101,27 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.get("/patients")
         self.assertEqual(response.status_code, 401)
 
-    async def test_webhook_rejects_oversized_message(self):
+    async def test_public_chat_rejects_oversized_message(self):
         response = await self.client.post(
-            "/webhook",
+            "/chat",
             json={"session_id": "test-session", "message": "x" * 501},
         )
         self.assertEqual(response.status_code, 422)
 
-    async def test_public_chat_webhook_is_rate_limited(self):
+    async def test_public_chat_is_available_without_internal_hmac(self):
+        response = await self.client.post(
+            "/chat",
+            json={"session_id": "public-chat-test", "message": "test"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["response"], "Test acknowledged.")
+
+    async def test_public_chat_is_rate_limited(self):
         statuses = []
+        main_module.limiter.enabled = True
         for index in range(11):
             response = await self.client.post(
-                "/webhook",
+                "/chat",
                 json={"session_id": f"rate-limit-ci-{index}", "message": "test"},
             )
             statuses.append(response.status_code)
