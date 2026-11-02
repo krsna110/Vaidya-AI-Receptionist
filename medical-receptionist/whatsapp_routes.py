@@ -375,7 +375,7 @@ async def verify_whatsapp_webhook(request: Request):
     raise HTTPException(status_code=403, detail="WhatsApp webhook verification failed.")
 
 
-async def _process_whatsapp_message(message: dict) -> bool:
+async def _process_whatsapp_message(message: dict, final_attempt: bool = False) -> bool:
     sender = str(message.get("from") or "").strip()
     if not sender:
         return True
@@ -424,20 +424,22 @@ async def _process_whatsapp_message(message: dict) -> bool:
         return True
     except HTTPException as exc:
         logger.warning("WhatsApp message processing failed | error_type=%s", type(exc).__name__)
-        try:
-            await _send_text(
-                sender,
-                "Sorry, I couldn't process that message. Please try again or send your question as text.",
-            )
-        except Exception:
-            logger.error("Could not send WhatsApp error reply | error_type=%s", "send_failed")
+        if final_attempt:
+            try:
+                await _send_text(
+                    sender,
+                    "Sorry, I couldn't process that message. Please try again or send your question as text.",
+                )
+            except Exception:
+                logger.error("Could not send WhatsApp error reply | error_type=%s", "send_failed")
         return False
     except Exception as exc:
         logger.error("Unexpected WhatsApp message processing error | error_type=%s", type(exc).__name__)
-        try:
-            await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
-        except Exception:
-            logger.error("Could not send WhatsApp error reply | error_type=%s", "send_failed")
+        if final_attempt:
+            try:
+                await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
+            except Exception:
+                logger.error("Could not send WhatsApp error reply | error_type=%s", "send_failed")
         return False
 
 
@@ -449,7 +451,7 @@ async def process_next_whatsapp_message() -> bool:
     message_id, payload_json, attempts = claimed
     try:
         message = json.loads(payload_json)
-        succeeded = await _process_whatsapp_message(message)
+        succeeded = await _process_whatsapp_message(message, final_attempt=attempts >= 5)
         if succeeded:
             _finish_webhook_message(message_id, "processed")
         else:
