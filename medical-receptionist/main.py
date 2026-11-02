@@ -12,8 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from passlib.context import CryptContext
 from typing import Annotated
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from dotenv import load_dotenv
 
@@ -113,18 +114,14 @@ def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
 
 
 def is_confirmation_message(message: str) -> bool:
-    text_msg = (message or "").strip().lower()
-    confirmations = [
-        "yes",
-        "confirm",
-        "confirmed",
-        "yes confirm",
-        "yes confirm booking",
-        "book it",
-        "proceed",
-        "done",
-    ]
-    return any(token in text_msg for token in confirmations)
+    """Accept explicit confirmations only; substring matching can book on unrelated words."""
+    text_msg = re.sub(r"[^a-z ]", " ", (message or "").strip().lower())
+    text_msg = re.sub(r"\s+", " ", text_msg).strip()
+    confirmations = {
+        "yes", "yes confirm", "yes confirm booking", "confirm", "confirmed",
+        "confirm booking", "book it", "proceed", "i confirm", "please confirm",
+    }
+    return text_msg in confirmations
 
 
 def extract_appointment_id(data: dict, message: str) -> int | None:
@@ -245,7 +242,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Created patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Created patient record | patient_id=%s", patient.id)
         return
 
     updated = False
@@ -259,7 +256,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Updated patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Updated patient record | patient_id=%s", patient.id)
 
 
 def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
@@ -364,16 +361,18 @@ def sync_appointment_to_google_calendar(db: Session, appointment_id: int) -> str
 
 # ---------- Pydantic request models ----------
 class WebhookRequest(BaseModel):
-    user_id: str | None = None
-    session_id: str | None = None
-    message: str
+    user_id: str | None = Field(default=None, min_length=1, max_length=128)
+    session_id: str | None = Field(default=None, min_length=1, max_length=128)
+    message: str = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
     def ensure_user_identifier(self):
         if not self.user_id and self.session_id:
             self.user_id = self.session_id
-        if not self.user_id:
+        if not self.user_id or not self.user_id.strip():
             raise ValueError("Either user_id or session_id is required")
+        if not self.message.strip():
+            raise ValueError("Message cannot be empty")
         return self
 
 
@@ -418,7 +417,35 @@ def ensure_sqlite_schema_upgrades() -> None:
 
 
 ensure_sqlite_schema_upgrades()
-logger.info(f"SQLite database URL: {database.SQLALCHEMY_DATABASE_URL}")
+logger.info("Database configured | dialect=%s", engine.dialect.name)
+
+# Optional one-time admin bootstrap. Credentials are supplied only through the
+# deployment environment; the plaintext password is never stored.
+def bootstrap_admin_user() -> None:
+    username = os.getenv("ADMIN_USERNAME", "").strip()
+    password = os.getenv("ADMIN_PASSWORD", "")
+    if not username or not password:
+        logger.warning("Admin bootstrap skipped; set ADMIN_USERNAME and ADMIN_PASSWORD to create the first admin.")
+        return
+    if len(password) < 12:
+        raise RuntimeError("ADMIN_PASSWORD must be at least 12 characters.")
+    db = database.SessionLocal()
+    try:
+        existing_user = db.query(models.User).filter(models.User.username == username).first()
+        if existing_user:
+            return
+        db.add(models.User(
+            username=username,
+            email=f"{username}@localhost.invalid",
+            hashed_password=auth.hash_password(password),
+        ))
+        db.commit()
+        logger.warning("Bootstrapped initial admin account from environment configuration.")
+    finally:
+        db.close()
+
+
+bootstrap_admin_user()
 
 # ---------- FastAPI app ----------
 app = FastAPI(
@@ -459,10 +486,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # ---------- Initialize services ----------
@@ -561,12 +588,16 @@ async def get_slots(
 
 
 @app.post("/auth/token", response_model=auth.Token)
+@limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(database.get_db),
 ):
-    """Authenticates a user and returns an access token."""
-    if form_data.username != "admin" or form_data.password != "password":
+    """Authenticate a database-backed user and return a short-lived JWT."""
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        # Keep the response identical for unknown usernames and bad passwords.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -574,7 +605,7 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": form_data.username}, expires_delta=access_token_expires
+        data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -586,7 +617,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.post("/webhook")
-@limiter.limit("20/minute")
+@limiter.limit("10/minute")
 async def webhook_receiver(
     request: Request,
     payload: WebhookRequest,
@@ -615,7 +646,9 @@ async def webhook_receiver(
         .all()
     ]
 
-    # Fast path for load/rate-limit tests to avoid external LLM latency.
+    # Public chat is intentionally unauthenticated for browser clients. Keep it
+    # bounded and rate-limited; use a server-side gateway/WAF for stronger abuse
+    # controls because CORS is not authentication.
     if message.lower() == "test":
         return {
             "response": "Test acknowledged.",
