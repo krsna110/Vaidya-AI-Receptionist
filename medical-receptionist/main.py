@@ -585,6 +585,31 @@ async def get_all_appointments(
     return appointments
 
 
+@app.post("/appointments/{appointment_id}/cancel")
+async def cancel_appointment(
+    appointment_id: int,
+    current_user: auth.TokenData = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    """Cancel an appointment through the authenticated admin API."""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if appointment is None:
+        raise HTTPException(status_code=404, detail="Appointment not found.")
+    if not appointment.is_confirmed:
+        return {"status": "already_cancelled", "appointment_id": appointment_id}
+
+    if appointment.google_event_id:
+        if calendar_service is None:
+            raise HTTPException(status_code=503, detail="Calendar service is unavailable; appointment was not changed.")
+        if not calendar_service.cancel_appointment(appointment.google_event_id):
+            raise HTTPException(status_code=502, detail="Google Calendar cancellation failed; appointment was not changed.")
+
+    appointment.is_confirmed = False
+    db.add(appointment)
+    db.commit()
+    return {"status": "cancelled", "appointment_id": appointment_id}
+
+
 @app.get("/patients")
 async def get_all_patients(
     current_user: auth.TokenData = Depends(auth.get_current_user),
