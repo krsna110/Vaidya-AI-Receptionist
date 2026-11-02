@@ -102,11 +102,16 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 401)
 
     async def test_public_chat_rejects_oversized_message(self):
-        response = await self.client.post(
-            "/chat",
-            json={"session_id": "test-session", "message": "x" * 501},
-        )
-        self.assertEqual(response.status_code, 422)
+        limiter_enabled = main_module.limiter.enabled
+        main_module.limiter.enabled = False
+        try:
+            response = await self.client.post(
+                "/chat",
+                json={"session_id": "test-session", "message": "x" * 501},
+            )
+            self.assertEqual(response.status_code, 422)
+        finally:
+            main_module.limiter.enabled = limiter_enabled
 
     async def test_public_chat_is_available_without_internal_hmac(self):
         response = await self.client.post(
