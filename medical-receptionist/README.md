@@ -101,17 +101,30 @@ JWT_SECRET="a-long-random-secret"
 ENVIRONMENT="development"
 VAIDYA_INTERNAL_WEBHOOK_SECRET=""
 ALLOW_UNAUTHENTICATED_WEBHOOK="true"
+CLINIC_NAME="Your Clinic Name"
+CLINIC_ADDRESS=""
+CLINIC_TIMEZONE="Asia/Kolkata"
+CLINIC_OPEN_HOUR="9"
+CLINIC_CLOSE_HOUR="18"
+CLINIC_WORKING_DAYS="0,1,2,3,4,5,6"
+CLINIC_HOLIDAYS=""
+CLINIC_BREAKS=""
+APPOINTMENT_DURATION_MINUTES="30"
 FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
 -   **GEMINI_API_KEY**: Obtain this from [Google AI Studio](https://aistudio.google.com/).
 -   **GROQ_API_KEY**: Obtain this from the [Groq Console](https://console.groq.com/keys).
 -   **DATABASE_URL**: The default SQLite path is already provided. You generally don't need to change this unless you're using a different database.
+-   **GEMINI_MODEL / GROQ_MODEL**: Provider model IDs are configurable. The default Gemini text model is `gemini-3.8-flash`; check Google's [current model list](https://ai.google.dev/gemini-api/docs/models) for availability in your project.
+-   **Clinic schedule**: Set the clinic timezone, opening/closing hour, working days (Monday=0 through Sunday=6), holidays (comma-separated ISO dates), breaks (e.g. `13:00-14:00`), address, and appointment duration to match the actual clinic. Defaults are examples, not verified clinic business hours.
+-   **Internal webhook**: In production, set a strong random `VAIDYA_INTERNAL_WEBHOOK_SECRET` and set `ALLOW_UNAUTHENTICATED_WEBHOOK=false`. The unsigned bypass is honored only outside production. Do not call the internal endpoint directly from browser code.
 
 ### 7. Run the FastAPI Server
 
 ```bash
 cd medical-receptionist
+alembic upgrade head
 uvicorn whatsapp_app:app --reload
 ```
 
