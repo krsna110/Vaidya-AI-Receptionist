@@ -160,7 +160,7 @@ async def _send_text(to: str, text: str) -> None:
             url, headers={"Authorization": f"Bearer {ACCESS_TOKEN}"}, json=payload
         )
         if response.is_error:
-            logger.error("WhatsApp send failed: status=%s body=%s", response.status_code, response.text[:500])
+            logger.error("WhatsApp send failed | status=%s", response.status_code)
             raise HTTPException(status_code=502, detail="Could not send a WhatsApp reply.")
 
 
@@ -352,7 +352,7 @@ async def receive_whatsapp_webhook(request: Request):
                 except HTTPException as exc:
                     if message_id:
                         _finish_webhook_message(message_id, "failed", "http_error")
-                    logger.warning("WhatsApp message processing failed: %s", exc.detail)
+                    logger.warning("WhatsApp message processing failed | error_type=%s", type(exc).__name__)
                     try:
                         await _send_text(
                             sender,
@@ -363,7 +363,7 @@ async def receive_whatsapp_webhook(request: Request):
                 except Exception:
                     if message_id:
                         _finish_webhook_message(message_id, "failed", "processing_error")
-                    logger.exception("Unexpected WhatsApp message processing error")
+                    logger.error("Unexpected WhatsApp message processing error | error_type=%s", "internal_error")
                     try:
                         await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
                     except Exception:
