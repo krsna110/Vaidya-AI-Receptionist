@@ -33,6 +33,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MULTIMODAL_MODEL = os.getenv("GEMINI_MULTIMODAL_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 INTERNAL_BASE_URL = os.getenv("VAIDYA_INTERNAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 MAX_MEDIA_BYTES = 12 * 1024 * 1024
+MAX_WEBHOOK_BYTES = 1024 * 1024
 
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 AUDIO_TYPES = {
@@ -156,7 +157,7 @@ async def _send_text(to: str, text: str) -> None:
             url, headers={"Authorization": f"Bearer {ACCESS_TOKEN}"}, json=payload
         )
         if response.is_error:
-            logger.error("WhatsApp send failed: status=%s body=%s", response.status_code, response.text[:500])
+            logger.error("WhatsApp send failed | status=%s", response.status_code)
             raise HTTPException(status_code=502, detail="Could not send a WhatsApp reply.")
 
 
@@ -278,7 +279,17 @@ async def verify_whatsapp_webhook(request: Request):
 @router.post("/whatsapp/webhook")
 async def receive_whatsapp_webhook(request: Request):
     """Receive Meta Cloud API text, image, and audio messages."""
-    raw_body = await request.body()
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_WEBHOOK_BYTES:
+        raise HTTPException(status_code=413, detail="Webhook payload is too large.")
+    chunks: list[bytes] = []
+    body_size = 0
+    async for chunk in request.stream():
+        body_size += len(chunk)
+        if body_size > MAX_WEBHOOK_BYTES:
+            raise HTTPException(status_code=413, detail="Webhook payload is too large.")
+        chunks.append(chunk)
+    raw_body = b"".join(chunks)
     if not _valid_signature(raw_body, request.headers.get("X-Hub-Signature-256")):
         raise HTTPException(status_code=401, detail="Invalid WhatsApp webhook signature.")
 
@@ -287,7 +298,15 @@ async def receive_whatsapp_webhook(request: Request):
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON payload.") from exc
 
+    if (
+        not isinstance(payload, dict)
+        or payload.get("object") != "whatsapp_business_account"
+        or not isinstance(payload.get("entry", []), list)
+    ):
+        raise HTTPException(status_code=400, detail="Invalid WhatsApp webhook structure.")
+
     processed = 0
+    failed = 0
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value") or {}
@@ -348,6 +367,7 @@ async def receive_whatsapp_webhook(request: Request):
                         )
                 except HTTPException as exc:
                     processing_status = "failed"
+                    failed += 1
                     logger.warning("WhatsApp message processing failed: %s", exc.detail)
                     try:
                         await _send_text(
@@ -358,6 +378,7 @@ async def receive_whatsapp_webhook(request: Request):
                         logger.exception("Could not send WhatsApp error reply")
                 except Exception:
                     processing_status = "failed"
+                    failed += 1
                     logger.exception("Unexpected WhatsApp message processing error")
                     try:
                         await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
@@ -366,4 +387,8 @@ async def receive_whatsapp_webhook(request: Request):
                 finally:
                     _finish_whatsapp_message(message_id, processing_status)
 
+    if failed:
+        # Meta retries non-2xx deliveries. Successfully processed message IDs are
+        # deduplicated, so retrying the envelope will not repeat their side effects.
+        raise HTTPException(status_code=500, detail="One or more messages failed; provider may retry.")
     return {"status": "accepted", "processed": processed}
