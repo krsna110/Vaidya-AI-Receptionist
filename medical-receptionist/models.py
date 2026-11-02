@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -58,3 +58,17 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.now)
+
+class ProcessedWebhookMessage(Base):
+    """Persistent idempotency ledger for provider webhook message IDs."""
+    __tablename__ = "processed_webhook_messages"
+    __table_args__ = (
+        UniqueConstraint("provider", "message_id", name="uq_processed_webhook_provider_message"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    provider = Column(String(32), nullable=False)
+    message_id = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="processing")
+    received_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
