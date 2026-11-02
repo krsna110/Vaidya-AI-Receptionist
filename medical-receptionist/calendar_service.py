@@ -99,6 +99,41 @@ class GoogleCalendarService:
             end_hour = int(os.getenv("CLINIC_CLOSE_HOUR", "18"))
             if not (0 <= start_hour < end_hour <= 24):
                 raise ValueError("Clinic hours must satisfy 0 <= open < close <= 24")
+
+            working_days_raw = os.getenv("CLINIC_WORKING_DAYS", "0,1,2,3,4,5,6")
+            working_days = {
+                int(value.strip()) for value in working_days_raw.split(",") if value.strip()
+            }
+            if not working_days or any(day_number < 0 or day_number > 6 for day_number in working_days):
+                raise ValueError("CLINIC_WORKING_DAYS must be comma-separated weekday numbers from 0 (Monday) to 6 (Sunday)")
+            if date.weekday() not in working_days:
+                return []
+
+            holidays = {
+                value.strip() for value in os.getenv("CLINIC_HOLIDAYS", "").split(",")
+                if value.strip()
+            }
+            for holiday in holidays:
+                datetime.date.fromisoformat(holiday)
+            if date.isoformat() in holidays:
+                return []
+
+            breaks: list[tuple[datetime.time, datetime.time]] = []
+            for raw_break in os.getenv("CLINIC_BREAKS", "").split(","):
+                raw_break = raw_break.strip()
+                if not raw_break:
+                    continue
+                start_text, separator, end_text = raw_break.partition("-")
+                if not separator:
+                    raise ValueError("CLINIC_BREAKS entries must use HH:MM-HH:MM format")
+                break_start = datetime.datetime.strptime(start_text.strip(), "%H:%M").time()
+                break_end = datetime.datetime.strptime(end_text.strip(), "%H:%M").time()
+                if break_start >= break_end:
+                    raise ValueError("Each clinic break must end after it starts")
+                if break_start < datetime.time(start_hour) or break_end > datetime.time(end_hour):
+                    raise ValueError("Clinic breaks must fall within clinic opening hours")
+                breaks.append((break_start, break_end))
+
             day_start = datetime.datetime.combine(date, datetime.time(start_hour), tzinfo=clinic_tz)
             day_end = datetime.datetime.combine(date, datetime.time(end_hour), tzinfo=clinic_tz)
             now = datetime.datetime.now(clinic_tz)
@@ -133,8 +168,14 @@ class GoogleCalendarService:
             free_slots: list[str] = []
             while current_time + datetime.timedelta(minutes=duration) <= day_end:
                 slot_end = current_time + datetime.timedelta(minutes=duration)
-                is_free = True
+                is_free = not any(
+                    datetime.datetime.combine(date, break_start, tzinfo=clinic_tz) < slot_end
+                    and datetime.datetime.combine(date, break_end, tzinfo=clinic_tz) > current_time
+                    for break_start, break_end in breaks
+                )
                 for event in events:
+                    if not is_free:
+                        break
                     event_start_raw = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")
                     event_end_raw = event.get("end", {}).get("dateTime") or event.get("end", {}).get("date")
                     if not event_start_raw or not event_end_raw:
@@ -200,8 +241,9 @@ class GoogleCalendarService:
                 logger.exception("Could not check Calendar for an existing booking reference")
                 return None
 
+        clinic_name = os.getenv("CLINIC_NAME", "Clinic").strip() or "Clinic"
         event_body = {
-            "summary": f"Appointment: {reason} - {patient_name}",
+            "summary": f"Appointment at {clinic_name}: {reason} - {patient_name}",
             "location": os.getenv("CLINIC_ADDRESS", "").strip() or None,
             "description": "Patient contact details are stored in the clinic system.",
             "extendedProperties": {
