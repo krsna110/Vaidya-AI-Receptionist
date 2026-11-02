@@ -5,7 +5,7 @@ This project implements an AI-powered medical receptionist system designed to as
 ## Tech Stack
 
 - **FastAPI**: Web framework for building the API.
-- **Gemini 2.0 Flash (google.ai.generativelanguage SDK)**: Primary Large Language Model for intent detection and response generation.
+- **Gemini API via `google-genai` (default model: Gemini 3.8 Flash)**: Primary Large Language Model for intent detection and response generation.
 - **Groq (Python SDK)**: Fallback Large Language Model when Gemini is unavailable or rate-limited.
 - **langdetect**: Library for automatic language detection (English, Hindi, Hinglish).
 - **Google Calendar API (google-api-python-client + google-auth-oauthlib)**: For managing appointments.
@@ -91,7 +91,9 @@ Edit the `.env` file:
 ```
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 GROQ_API_KEY="YOUR_GROQ_API_KEY"
-DATABASE_URL="sqlite:///./medical-receptionist/sql_app.db"
+DATABASE_URL="sqlite:///./sql_app.db"
+GEMINI_MODEL="gemini-3.8-flash"
+GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
 ```
 
 -   **GEMINI_API_KEY**: Obtain this from the [Google AI Studio](https://makersuite.google.com/key).
@@ -101,8 +103,11 @@ DATABASE_URL="sqlite:///./medical-receptionist/sql_app.db"
 ### 7. Run the FastAPI Server
 
 ```bash
-uvicorn medical-receptionist.main:app --reload
+cd medical-receptionist
+uvicorn whatsapp_app:app --reload
 ```
+
+This starts the existing FastAPI app and registers the Meta WhatsApp media routes. Without WhatsApp credentials, the existing local API still starts; the WhatsApp webhook returns a configuration error until you set its credentials.
 
 This will start the development server. You should see output indicating that the server is running, typically at `http://127.0.0.1:8000`.
 
