@@ -285,6 +285,7 @@ def cancel_appointment_record(db: Session, appointment_id: int) -> bool:
     if not appointment:
         return False
     appointment.is_confirmed = False
+    appointment.booking_status = "cancelled"
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
@@ -375,6 +376,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
             models.Appointment.date == appt_date,
             models.Appointment.time == appt_time,
             models.Appointment.reason == reason,
+            models.Appointment.booking_status.in_(["pending", "confirmed"]),
         )
         .first()
     )
@@ -387,7 +389,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         .filter(
             models.Appointment.date == appt_date,
             models.Appointment.time == appt_time,
-            models.Appointment.is_confirmed == True,
+            models.Appointment.booking_status.in_(["pending", "confirmed"]),
         )
         .first()
     )
@@ -408,7 +410,8 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         start_time=start_datetime,
         end_time=start_datetime + timedelta(minutes=duration_minutes),
         description=reason,
-        is_confirmed=True,
+        is_confirmed=False,
+        booking_status="pending",
         date=appt_date,
         time=appt_time,
         reason=reason,
@@ -464,6 +467,7 @@ def sync_appointment_to_google_calendar(db: Session, appointment_id: int) -> str
         phone=appointment.patient.phone_number or "",
         start_datetime=start_dt,
         reason=appointment.reason or appointment.description or "General consultation",
+        booking_reference=str(appointment.id),
     )
     if event_id:
         appointment.google_event_id = event_id
@@ -937,6 +941,7 @@ async def webhook_receiver(
                     appointment = db.query(models.Appointment).filter(models.Appointment.id == appt_id).first()
                     if appointment:
                         appointment.is_confirmed = True
+                        appointment.booking_status = "confirmed"
                         db.commit()
                     new_state = "BOOKED"
                     response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
@@ -944,6 +949,7 @@ async def webhook_receiver(
                     appointment = db.query(models.Appointment).filter(models.Appointment.id == appt_id).first()
                     if appointment:
                         appointment.is_confirmed = False
+                        appointment.booking_status = "failed"
                         db.commit()
                     new_state = "COLLECT_INFO"
                     response_text = (
@@ -955,6 +961,17 @@ async def webhook_receiver(
                 response_text = "I could not reserve that slot. Please choose a different date or time."
         except Exception as e:
             db.rollback()
+            # A committed pending reservation must never be presented as confirmed
+            # after a downstream calendar error.
+            appt_id = locals().get("appt_id")
+            if appt_id:
+                failed_appointment = db.query(models.Appointment).filter(
+                    models.Appointment.id == appt_id
+                ).first()
+                if failed_appointment and not failed_appointment.google_event_id:
+                    failed_appointment.is_confirmed = False
+                    failed_appointment.booking_status = "failed"
+                    db.commit()
             logger.error("Appointment creation failed | session_id=%s | error_type=%s", user_id, type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
