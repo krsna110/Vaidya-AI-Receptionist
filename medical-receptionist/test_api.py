@@ -121,6 +121,50 @@ class BookingHelperTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_pending_reservation_blocks_a_second_patient(self):
+        db = SessionLocal()
+        slot_date, slot_time = "2098-12-29", "12:00"
+        patients = [
+            ("Slot Guard One", "+919876543297"),
+            ("Slot Guard Two", "+919876543296"),
+        ]
+        try:
+            for _, phone in patients:
+                old_patient = db.query(models.Patient).filter_by(phone_number=phone).first()
+                if old_patient:
+                    db.query(models.Appointment).filter_by(patient_id=old_patient.id).delete()
+                    db.delete(old_patient)
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.commit()
+            db.add_all([
+                models.Patient(name=name, phone_number=phone)
+                for name, phone in patients
+            ])
+            db.commit()
+
+            first = create_appointment_from_booking_data(db, {
+                "name": patients[0][0], "phone": patients[0][1],
+                "date": slot_date, "time": slot_time, "reason": "first patient",
+            })
+            second = create_appointment_from_booking_data(db, {
+                "name": patients[1][0], "phone": patients[1][1],
+                "date": slot_date, "time": slot_time, "reason": "second patient",
+            })
+            self.assertIsNotNone(first)
+            self.assertIsNone(second)
+            reserved = db.query(models.Appointment).filter_by(id=first).one()
+            self.assertEqual(reserved.booking_status, "pending")
+            self.assertFalse(reserved.is_confirmed)
+        finally:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            for _, phone in patients:
+                old_patient = db.query(models.Patient).filter_by(phone_number=phone).first()
+                if old_patient:
+                    db.query(models.Appointment).filter_by(patient_id=old_patient.id).delete()
+                    db.delete(old_patient)
+            db.commit()
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()
