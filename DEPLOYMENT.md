@@ -68,10 +68,12 @@ After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exa
 3. Test admin login with the environment-bootstrapped account and verify protected patient/appointment endpoints reject requests without a bearer token.
 4. Test booking, calendar failure handling, cancellation, and repeated WhatsApp webhook delivery in a staging calendar.
 5. Confirm webhook signature validation works using Meta's real test app before enabling production traffic.
+6. Send the same signed WhatsApp message twice and verify the queue processes it once.
+7. Simulate a temporary provider/AI failure and verify the queue retries up to five attempts; inspect failed rows before retrying manually.
 
 ## Safety and rollback
 
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
 - Take a database backup before migrations and retain the previous backend release for rollback. For a new empty database, the startup command applies all migrations automatically. For an existing database created before Alembic was added, take a backup, verify the schema, run `alembic stamp 0001_initial` from `medical-receptionist/`, then run `alembic upgrade head`; do not stamp an unverified database.
 - Use staging credentials and synthetic patient data for tests. Do not use real patient records in CI.
-- The GitHub Actions suite does not verify live Meta delivery, real AI-provider quotas, or end-to-end Google Calendar writes; those require staging credentials and manual verification.
+- WhatsApp message payloads are persisted in the database queue for processing and retry. Completed and permanently failed queue rows are purged after 30 days; protect the database as it contains patient message content. The GitHub Actions suite does not verify live Meta delivery, real AI-provider quotas, or end-to-end Google Calendar writes; those require staging credentials and manual verification.
