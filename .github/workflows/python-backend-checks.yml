@@ -31,6 +31,10 @@ jobs:
           cache-dependency-path: medical-receptionist/requirements.txt
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Run database migrations against clean SQLite
+        env:
+          DATABASE_URL: sqlite:///./migration_ci.db
+        run: alembic upgrade head && alembic current
       - name: Compile Python modules
         run: python -m compileall -q .
       - name: Run backend and WhatsApp tests
