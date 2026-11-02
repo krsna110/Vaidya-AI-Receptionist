@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 import os
+import hashlib
 import re
 from datetime import datetime, timedelta, date
 
@@ -49,6 +50,11 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def session_log_ref(user_id: str) -> str:
+    """Return a stable, non-reversible correlation ID instead of logging patient phone IDs."""
+    return hashlib.sha256((user_id or "").encode("utf-8")).hexdigest()[:12]
 
 
 def normalize_phone(raw_phone: str) -> str:
@@ -594,7 +600,7 @@ async def reset_user_state(
     current_user: auth.TokenData = Depends(auth.get_current_user),
 ):
     state_manager.reset_state(payload.user_id)
-    logger.info(f"State reset for user_id={payload.user_id}")
+    logger.info("Conversation state reset | session_ref=%s", session_log_ref(payload.user_id))
     return {"status": "ok", "user_id": payload.user_id, "state": "GREETING"}
 
 
@@ -659,7 +665,7 @@ async def webhook_receiver(
     conversation_state = state_manager.get_state(user_id)
     current_state = conversation_state.state
 
-    logger.info(f"Webhook received: session={user_id}")
+    logger.info("Webhook received | session_ref=%s", session_log_ref(user_id))
     logger.info("Webhook message received | state=%s | message_length=%s", current_state, len(message))
 
     # Fetch last 6 messages for conversation history
@@ -735,7 +741,7 @@ async def webhook_receiver(
             )
 
     except Exception as e:
-        logger.error(f"Agent error for user {user_id}: {e}", exc_info=True)
+        logger.error("Agent error | session_ref=%s | error_type=%s", session_log_ref(user_id), type(e).__name__, exc_info=True)
         return {
             "response": "I'm experiencing technical difficulties. Please try again shortly.",
             "intent": "UNKNOWN",
@@ -757,7 +763,7 @@ async def webhook_receiver(
         db.refresh(conversation_entry_user)
         db.refresh(conversation_entry_ai)
     except Exception as e:
-        logger.error(f"Failed to save conversation history for user {user_id}: {e}", exc_info=True)
+        logger.error("Failed to save conversation history | session_ref=%s", session_log_ref(user_id), exc_info=True)
 
     # Extract patient data using the new agent method
     extracted_patient_data = await asyncio.to_thread(agent.extract_patient_data, message, conversation_history)
@@ -877,7 +883,7 @@ async def webhook_receiver(
 
     state_manager.set_state(user_id, new_state, merged_data)
 
-    logger.info(f"User {user_id} | new_state={new_state} | intent={intent}")
+    logger.info("Conversation updated | session_ref=%s | new_state=%s | intent=%s", session_log_ref(user_id), new_state, intent)
 
     return {
         "response": response_text,
