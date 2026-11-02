@@ -101,6 +101,16 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    async def test_public_chat_webhook_is_rate_limited(self):
+        statuses = []
+        for index in range(11):
+            response = await self.client.post(
+                "/webhook",
+                json={"session_id": f"rate-limit-ci-{index}", "message": "test"},
+            )
+            statuses.append(response.status_code)
+        self.assertIn(429, statuses)
+
     async def test_cors_does_not_reflect_unconfigured_origin(self):
         response = await self.client.options(
             "/health",
