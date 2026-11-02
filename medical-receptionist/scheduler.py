@@ -67,7 +67,7 @@ class Scheduler:
                         f"Error processing reminder for appointment {appt.id}: {e}"
                     )
         except Exception as e:
-            logger.error(f"Error in reminder job: {e}")
+            logger.error("Reminder job failed | error_type=%s", type(e).__name__)
         finally:
             session.close()
 
@@ -105,7 +105,7 @@ class Scheduler:
                         f"Error processing follow-up for appointment {appt.id}: {e}"
                     )
         except Exception as e:
-            logger.error(f"Error in follow-up job: {e}")
+            logger.error("Follow-up job failed | error_type=%s", type(e).__name__)
         finally:
             session.close()
 
