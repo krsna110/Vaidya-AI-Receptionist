@@ -5,8 +5,8 @@ import unittest
 
 import httpx
 
-os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test-verify")
-os.environ.setdefault("WHATSAPP_APP_SECRET", "test-secret")
+os.environ["WHATSAPP_VERIFY_TOKEN"] = "test-verify"
+os.environ["WHATSAPP_APP_SECRET"] = "test-secret"
 
 from whatsapp_app import app
 
