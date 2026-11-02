@@ -512,6 +512,7 @@ def ensure_sqlite_schema_upgrades() -> None:
         "google_event_id": "VARCHAR",
         "reminder_status": "VARCHAR",
         "followup_status": "VARCHAR",
+        "booking_status": "VARCHAR(20)",
     }
     conversation_required_columns = {
         "session_id": "VARCHAR",
@@ -525,6 +526,22 @@ def ensure_sqlite_schema_upgrades() -> None:
                 if col_name not in existing_cols:
                     conn.execute(text(f"ALTER TABLE appointments ADD COLUMN {col_name} {col_type}"))
                     logger.info(f"DB upgrade applied: added appointments.{col_name}")
+
+            # Migrate pre-Alembic SQLite files safely while preserving old confirmation state.
+            conn.execute(text("""
+                UPDATE appointments
+                SET booking_status = CASE
+                    WHEN is_confirmed = 1 THEN 'confirmed'
+                    ELSE 'cancelled'
+                END
+                WHERE booking_status IS NULL
+            """))
+            conn.execute(text("DROP INDEX IF EXISTS uq_confirmed_appointment_slot"))
+            conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_confirmed_appointment_slot
+                ON appointments(date, time)
+                WHERE booking_status IN ('pending', 'confirmed')
+            """))
 
             conv_rows = conn.execute(text("PRAGMA table_info(conversations)")).fetchall()
             conv_existing_cols = {row[1] for row in conv_rows}
