@@ -44,6 +44,15 @@ def upgrade() -> None:
         )
         op.create_index("ix_processed_webhook_messages_id", "processed_webhook_messages", ["id"])
 
+    queue_columns = _columns("processed_webhook_messages")
+    if "payload" not in queue_columns:
+        op.add_column("processed_webhook_messages", sa.Column("payload", sa.Text(), nullable=True))
+    if "attempts" not in queue_columns:
+        op.add_column(
+            "processed_webhook_messages",
+            sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
+        )
+
     indexes = {index["name"] for index in sa.inspect(op.get_bind()).get_indexes("appointments")}
     if "uq_confirmed_appointment_slot" not in indexes:
         duplicate_slots = op.get_bind().execute(sa.text("""
