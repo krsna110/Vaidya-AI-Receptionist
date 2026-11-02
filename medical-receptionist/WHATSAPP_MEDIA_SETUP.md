@@ -22,10 +22,10 @@ Add these variables to the backend environment (do not commit secrets):
     WHATSAPP_PHONE_NUMBER_ID=...
     WHATSAPP_VERIFY_TOKEN=use-a-long-random-value
     WHATSAPP_APP_SECRET=...
-    WHATSAPP_API_VERSION=v23.0
+    WHATSAPP_API_VERSION=v26.0
     VAIDYA_INTERNAL_BASE_URL=http://127.0.0.1:8000
 
-Set WHATSAPP_API_VERSION to a currently supported Graph API version in your Meta app. Configure the WhatsApp webhook callback URL as https://YOUR_DOMAIN/whatsapp/webhook, subscribe to the messages field, and use the same verify token.
+The default is Graph API v26.0, current as of November 2026. Set WHATSAPP_API_VERSION only if your Meta app needs a different supported version. Configure the WhatsApp webhook callback URL as https://YOUR_DOMAIN/whatsapp/webhook, subscribe to the messages field, and use the same verify token.
 
 The app secret is the Meta App Secret, not the access token. Keep both server-side.
 
