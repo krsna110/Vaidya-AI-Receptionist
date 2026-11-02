@@ -47,6 +47,19 @@ from scheduler import Scheduler
 from database import engine, Base
 
 # ---------- Structured logging ----------
+def redact_sensitive_text(value: str) -> str:
+    """Redact common patient/contact identifiers and credentials before log output."""
+    value = re.sub(r"(?<!\\d)\\+?(?:\\d[\\s().-]?){10,15}(?!\\d)", "[REDACTED_PHONE]", value)
+    value = re.sub(r"\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b", "[REDACTED_EMAIL]", value)
+    value = re.sub(r"(?i)\\bBearer\\s+[A-Za-z0-9._~+/=-]+", "Bearer [REDACTED]", value)
+    value = re.sub(
+        r"(?i)\\b(access[_-]?token|api[_-]?key|client[_-]?secret|jwt[_-]?secret)\\s*[:=]\\s*[^,\\s;]+",
+        r"\\1=[REDACTED]",
+        value,
+    )
+    return value
+
+
 class JsonLogFormatter(logging.Formatter):
     """Emit one JSON object per log record for host log search and alerting."""
     def format(self, record: logging.LogRecord) -> str:
@@ -54,13 +67,13 @@ class JsonLogFormatter(logging.Formatter):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": redact_sensitive_text(record.getMessage()),
         }
         for field in ("request_id", "http_method", "http_path", "http_status"):
             if hasattr(record, field):
                 payload[field] = getattr(record, field)
         if record.exc_info:
-            payload["exception"] = self.formatException(record.exc_info)
+            payload["exception"] = redact_sensitive_text(self.formatException(record.exc_info))
         return json.dumps(payload, ensure_ascii=False)
 
 
@@ -943,7 +956,11 @@ async def webhook_receiver(
     try:
         upsert_patient_from_data(db, merged_data)
     except Exception as e:
-        logger.error(f"Patient upsert failed for user {user_id}: {e}", exc_info=True)
+        logger.error(
+            "Patient upsert failed | session_ref=%s | error_type=%s",
+            session_log_ref(user_id),
+            type(e).__name__,
+        )
 
     # Update conversation state based on intent and current state
     new_state = current_state
@@ -982,7 +999,11 @@ async def webhook_receiver(
             # Keep the durable reservation pending when the external Calendar result
             # is ambiguous. A retry reuses the same appointment ID and can recover
             # an event through its private Calendar booking reference.
-            logger.error("Appointment creation failed | session_id=%s | error_type=%s", user_id, type(e).__name__)
+            logger.error(
+                "Appointment creation failed | session_ref=%s | error_type=%s",
+                session_log_ref(user_id),
+                type(e).__name__,
+            )
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
     elif current_state == "CONFIRM" and re.sub(r"[^a-z ]", " ", message.lower()).strip() in {
