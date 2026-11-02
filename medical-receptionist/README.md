@@ -12,7 +12,6 @@ This project implements an AI-powered medical receptionist system designed to as
 - **SQLite**: Database for storing conversation states and appointment details.
 - **APScheduler**: For scheduling reminder and follow-up jobs.
 - **Alembic**: For versioned database schema migrations.
-- **Database-backed WhatsApp queue**: Durable message processing, duplicate suppression, bounded retries, and 30-day retention for completed/dead-letter records.
 - **Python-dotenv**: For managing environment variables.
 
 ## Project Structure
@@ -125,10 +124,10 @@ FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```bash
 cd medical-receptionist
 alembic upgrade head
-uvicorn whatsapp_app:app --reload
+uvicorn main:app --reload
 ```
 
-This starts the existing FastAPI app and registers the Meta WhatsApp media routes. Without WhatsApp credentials, the existing local API still starts; the WhatsApp webhook returns a configuration error until you set its credentials.
+This starts the core FastAPI application and its existing browser chat/admin UI. The optional WhatsApp adapter is not enabled by this command.
 
 The development server should be available at `http://127.0.0.1:8000`. For local use, run the command from the `medical-receptionist/` directory so the static files and `.env` are resolved correctly.
 
