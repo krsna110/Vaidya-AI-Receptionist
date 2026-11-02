@@ -59,7 +59,7 @@ Use Vercel or a Node web service. If using Render:
 - Start command: `npm run start -- -p $PORT`
 - Set `NEXT_PUBLIC_BACKEND_URL` to the public backend URL.
 
-After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend.
+After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend. The browser chat endpoint intentionally remains public, so put a WAF or API gateway in front of it for production traffic and use Redis via `RATE_LIMIT_STORAGE_URI` when running multiple backend workers; the built-in IP limit is a baseline, not bot protection.
 
 ## Smoke tests
 
