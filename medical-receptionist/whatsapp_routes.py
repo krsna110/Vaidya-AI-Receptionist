@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -294,8 +295,8 @@ async def receive_whatsapp_webhook(request: Request):
         raise HTTPException(status_code=401, detail="Invalid WhatsApp webhook signature.")
 
     try:
-        payload = await request.json()
-    except Exception as exc:
+        payload = json.loads(raw_body)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON payload.") from exc
 
     if (
