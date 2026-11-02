@@ -28,7 +28,7 @@ PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
 APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MULTIMODAL_MODEL = os.getenv("GEMINI_MULTIMODAL_MODEL", "gemini-2.0-flash")
+MULTIMODAL_MODEL = os.getenv("GEMINI_MULTIMODAL_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 INTERNAL_BASE_URL = os.getenv("VAIDYA_INTERNAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 MAX_MEDIA_BYTES = 12 * 1024 * 1024
 
@@ -66,6 +66,14 @@ def _mime_type(value: str | None) -> str:
     return (value or "").split(";", 1)[0].strip().lower()
 
 
+def _is_allowed_media_url(value: str) -> bool:
+    parsed = urlparse(value)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and any(
+        host == suffix or host.endswith("." + suffix) for suffix in SAFE_MEDIA_HOSTS
+    )
+
+
 async def _download_media(media_id: str) -> tuple[bytes, str]:
     """Resolve a WhatsApp media ID, then download only from Meta media hosts."""
     _require_whatsapp_config()
@@ -83,11 +91,7 @@ async def _download_media(media_id: str) -> tuple[bytes, str]:
         mime = _mime_type(metadata.get("mime_type"))
         if not media_url:
             raise HTTPException(status_code=502, detail="WhatsApp media URL was missing.")
-        parsed = urlparse(media_url)
-        host = (parsed.hostname or "").lower()
-        if parsed.scheme != "https" or not any(
-            host == suffix or host.endswith("." + suffix) for suffix in SAFE_MEDIA_HOSTS
-        ):
+        if not _is_allowed_media_url(media_url):
             raise HTTPException(status_code=502, detail="Unexpected WhatsApp media host.")
         if mime not in IMAGE_TYPES | AUDIO_TYPES:
             raise HTTPException(status_code=415, detail="This image/audio format is not supported.")
