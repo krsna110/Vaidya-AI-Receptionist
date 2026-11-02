@@ -11,6 +11,8 @@ os.environ.setdefault("FRONTEND_ORIGINS", "https://frontend.example.test")
 from auth import create_access_token, hash_password, verify_password, verify_token
 from fastapi import HTTPException
 from main import app
+from database import SessionLocal
+import models
 
 
 class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
@@ -41,6 +43,52 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             data={"username": "admin", "password": "password"},
         )
         self.assertEqual(response.status_code, 401)
+
+    async def test_database_admin_can_login_and_cancel_appointment(self):
+        db = SessionLocal()
+        username = "ci-admin"
+        password = "test-password-long-enough"
+        try:
+            user = db.query(models.User).filter_by(username=username).first()
+            if user is None:
+                db.add(models.User(
+                    username=username,
+                    email="ci-admin@localhost.invalid",
+                    hashed_password=hash_password(password),
+                ))
+                db.commit()
+            patient = models.Patient(name="CI Patient", phone_number="+919876543210")
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            appointment = models.Appointment(
+                patient_id=patient.id,
+                start_time=__import__("datetime").datetime.utcnow(),
+                date="2099-01-01",
+                time="10:00",
+                reason="CI test",
+                description="CI test",
+                is_confirmed=True,
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+            appointment_id = appointment.id
+        finally:
+            db.close()
+
+        login = await self.client.post(
+            "/auth/token",
+            data={"username": username, "password": password},
+        )
+        self.assertEqual(login.status_code, 200)
+        token = login.json()["access_token"]
+        response = await self.client.post(
+            f"/appointments/{appointment_id}/cancel",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "cancelled")
 
     async def test_patient_endpoints_require_authentication(self):
         response = await self.client.get("/patients")
