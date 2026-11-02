@@ -53,6 +53,24 @@ class CalendarSlotTests(unittest.TestCase):
         self.assertEqual(service.service.events_api.last_query["calendarId"], "clinic-calendar@example.test")
         self.assertIn("+05:30", service.service.events_api.last_query["timeMin"])
 
+    def test_calendar_booking_reference_recovers_existing_event(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([{"id": "existing-event-id"}])
+
+        event_id = service.book_appointment(
+            patient_name="Test Patient",
+            phone="+919876543210",
+            start_datetime=datetime(2098, 12, 29, 11, 30),
+            reason="retry test",
+            booking_reference="appointment-123",
+        )
+        self.assertEqual(event_id, "existing-event-id")
+        self.assertEqual(
+            service.service.events_api.last_query["privateExtendedProperty"],
+            "vaidya_appointment_id=appointment-123",
+        )
+
     def test_invalid_clinic_timezone_fails_closed(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
         service.calendar_id = "primary"
