@@ -41,7 +41,7 @@ import models
 import auth
 from agent import Agent
 from state import StateManager
-from calendar_service import GoogleCalendarService
+from calendar_service import (GoogleCalendarService, CLINIC_TIMEZONE, CLINIC_OPEN_TIME, CLINIC_CLOSE_TIME, APPOINTMENT_DURATION_MINUTES)
 from scheduler import Scheduler
 from database import engine, Base
 
@@ -69,7 +69,7 @@ def normalize_booking_date(raw_date: str) -> str:
     value = (raw_date or "").strip().lower()
     if not value:
         return ""
-    today_obj = date.today()
+    today_obj = datetime.now(CLINIC_TIMEZONE).date()
     if value == "today":
         return today_obj.isoformat()
     if value in ("tomorrow", "tommorrow"):
@@ -83,20 +83,18 @@ def normalize_booking_date(raw_date: str) -> str:
 
 
 def normalize_booking_time(raw_time: str) -> str:
-    """Normalize common time phrases while keeping them readable."""
+    """Normalize recognized times to 24-hour HH:MM for consistent slot matching."""
     value = (raw_time or "").strip().lower().replace(".", "")
     if not value:
         return ""
     value = re.sub(r"\s+", " ", value)
-    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*([ap]m)?", value)
-    if not match:
-        return raw_time.strip()
-    hour = int(match.group(1))
-    minute = match.group(2) or "00"
-    meridiem = match.group(3)
-    if meridiem:
-        return f"{hour}:{minute} {meridiem.upper()}"
-    return f"{hour}:{minute}"
+    for pattern in ("%I:%M %p", "%I %p", "%H:%M", "%H"):
+        try:
+            parsed = datetime.strptime(value.upper(), pattern).time()
+            return parsed.strftime("%H:%M")
+        except ValueError:
+            continue
+    return raw_time.strip()
 
 
 def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
@@ -276,6 +274,17 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
     if not (name and phone and appt_date and appt_time and reason):
         return None
 
+    appointment_start = parse_booking_datetime(appt_date, appt_time)
+    if appointment_start is None:
+        return None
+    appt_time = appointment_start.strftime("%H:%M")
+    now_local = datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None)
+    appointment_end = appointment_start + timedelta(minutes=APPOINTMENT_DURATION_MINUTES)
+    if appointment_start <= now_local:
+        return None
+    if appointment_start.time() < CLINIC_OPEN_TIME or appointment_end.time() > CLINIC_CLOSE_TIME:
+        return None
+
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
     if patient is None and name:
         patient = db.query(models.Patient).filter(models.Patient.name == name).first()
@@ -313,8 +322,8 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
 
     appointment = models.Appointment(
         patient_id=patient.id,
-        start_time=datetime.utcnow(),
-        end_time=None,
+        start_time=appointment_start,
+        end_time=appointment_end,
         description=reason,
         is_confirmed=True,
         date=appt_date,
