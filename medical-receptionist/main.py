@@ -62,7 +62,10 @@ def normalize_phone(raw_phone: str) -> str:
     normalized = re.sub(r"[^\d+]", "", raw_phone)
     if normalized.count("+") > 1 or ("+" in normalized and not normalized.startswith("+")):
         normalized = normalized.replace("+", "")
-    return normalized
+    digits = re.sub(r"\D", "", normalized)
+    if not 8 <= len(digits) <= 15:
+        return ""
+    return ("+" if normalized.startswith("+") else "") + digits
 
 
 def normalize_booking_date(raw_date: str) -> str:
@@ -115,18 +118,14 @@ def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
 
 
 def is_confirmation_message(message: str) -> bool:
-    text_msg = (message or "").strip().lower()
-    confirmations = [
-        "yes",
-        "confirm",
-        "confirmed",
-        "yes confirm",
-        "yes confirm booking",
-        "book it",
-        "proceed",
-        "done",
-    ]
-    return any(token in text_msg for token in confirmations)
+    """Accept only explicit, whole-message confirmations."""
+    text_msg = re.sub(r"\s+", " ", (message or "").strip().lower())
+    text_msg = re.sub(r"[.!?]+$", "", text_msg).strip()
+    confirmations = {
+        "yes", "confirm", "confirmed", "yes confirm", "yes confirm booking",
+        "book it", "proceed", "done", "haan", "han", "ji haan", "haan confirm",
+    }
+    return text_msg in confirmations
 
 
 def extract_appointment_id(data: dict, message: str) -> int | None:
@@ -202,7 +201,7 @@ def is_booking_message(message: str, details: dict | None = None) -> bool:
 
 def missing_booking_fields(data: dict) -> list[str]:
     required = ["name", "phone", "date", "time", "reason"]
-    return [field for field in required if not (data.get(field) or "").strip()]
+    return [field for field in required if not str(data.get(field) or "").strip()]
 
 
 def booking_summary(data: dict) -> str:
@@ -247,7 +246,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Created patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Created patient record | patient_id=%s", patient.id)
         return
 
     updated = False
@@ -261,7 +260,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Updated patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Updated patient record | patient_id=%s", patient.id)
 
 
 def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
@@ -621,7 +620,7 @@ async def reset_user_state(
     current_user: auth.TokenData = Depends(auth.get_current_user),
 ):
     state_manager.reset_state(payload.user_id)
-    logger.info(f"State reset for user_id={payload.user_id}")
+    logger.info("Conversation state reset")
     return {"status": "ok", "user_id": payload.user_id, "state": "GREETING"}
 
 
@@ -714,7 +713,7 @@ async def webhook_receiver(
     conversation_state = state_manager.get_state(user_id)
     current_state = conversation_state.state
 
-    logger.info(f"Webhook received: session={user_id}")
+    logger.info("Webhook request received")
     logger.info("Webhook message received | state=%s | message_length=%s", current_state, len(message))
 
     # Fetch last 6 messages for conversation history
@@ -788,7 +787,7 @@ async def webhook_receiver(
             )
 
     except Exception as e:
-        logger.error(f"Agent error for user {user_id}: {e}", exc_info=True)
+        logger.error("Agent processing failed | error_type=%s", type(e).__name__)
         return {
             "response": "I'm experiencing technical difficulties. Please try again shortly.",
             "intent": "UNKNOWN",
@@ -810,7 +809,7 @@ async def webhook_receiver(
         db.refresh(conversation_entry_user)
         db.refresh(conversation_entry_ai)
     except Exception as e:
-        logger.error(f"Failed to save conversation history for user {user_id}: {e}", exc_info=True)
+        logger.error("Conversation history persistence failed | error_type=%s", type(e).__name__)
 
     # Extract patient data using the new agent method
     extracted_patient_data = await asyncio.to_thread(agent.extract_patient_data, message, conversation_history)
@@ -819,7 +818,7 @@ async def webhook_receiver(
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
     if isinstance(data, dict):
-        data = {**data, **deterministic_data, **extracted_patient_data}
+        data = {**data, **extracted_patient_data, **deterministic_data}
     else:
         data = {**deterministic_data, **extracted_patient_data}
 
@@ -849,7 +848,7 @@ async def webhook_receiver(
     try:
         upsert_patient_from_data(db, merged_data)
     except Exception as e:
-        logger.error(f"Patient upsert failed for user {user_id}: {e}", exc_info=True)
+        logger.error("Patient persistence failed | error_type=%s", type(e).__name__)
 
     # Update conversation state based on intent and current state
     new_state = current_state
@@ -870,7 +869,7 @@ async def webhook_receiver(
                 new_state = "COLLECT_INFO"
                 response_text = "I could not create the appointment. Please choose a different date or time."
         except Exception as e:
-            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            logger.error("Appointment creation failed | error_type=%s", type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
     elif intent == "BOOKING":
@@ -910,7 +909,7 @@ async def webhook_receiver(
 
     state_manager.set_state(user_id, new_state, merged_data)
 
-    logger.info(f"User {user_id} | new_state={new_state} | intent={intent}")
+    logger.info("Conversation state updated | state=%s | intent=%s", new_state, intent)
 
     return {
         "response": response_text,
