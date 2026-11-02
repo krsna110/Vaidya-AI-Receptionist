@@ -203,8 +203,12 @@ async def _save_image_conversation(user_id: str, user_message: str, answer: str)
 
 
 
-def _claim_whatsapp_message(message_id: str) -> bool:
-    """Claim a provider message once; failed/stale attempts can be retried."""
+_last_queue_cleanup = 0.0
+MAX_QUEUE_ATTEMPTS = 5
+
+
+def _claim_whatsapp_message(message_id: str, payload: dict | None = None) -> bool:
+    """Persist a message for background processing, deduplicating provider retries."""
     if not message_id:
         return False
     import database
@@ -218,18 +222,21 @@ def _claim_whatsapp_message(message_id: str) -> bool:
             .filter_by(provider="meta_whatsapp", message_id=message_id)
             .first()
         )
-        if record and record.status == "processed":
-            return False
-        if record and record.status == "processing" and now - record.updated_at < timedelta(minutes=5):
-            return False
         if record:
-            record.status = "processing"
+            if record.status in {"processed", "pending", "processing"}:
+                return False
+            if record.status == "failed" and record.attempts >= MAX_QUEUE_ATTEMPTS:
+                return False
+            record.status = "pending"
+            record.payload = json.dumps(payload or {}, ensure_ascii=False)
             record.updated_at = now
         else:
             record = models.ProcessedWebhookMessage(
                 provider="meta_whatsapp",
                 message_id=message_id,
-                status="processing",
+                status="pending",
+                payload=json.dumps(payload or {}, ensure_ascii=False),
+                attempts=0,
                 received_at=now,
                 updated_at=now,
             )
@@ -240,6 +247,60 @@ def _claim_whatsapp_message(message_id: str) -> bool:
         except IntegrityError:
             db.rollback()
             return False
+    finally:
+        db.close()
+
+
+def _claim_next_whatsapp_message() -> tuple[str, dict, int] | None:
+    """Atomically claim one pending row so multiple app workers do not process it twice."""
+    import database
+    import models
+
+    global _last_queue_cleanup
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    db = database.SessionLocal()
+    try:
+        if asyncio.get_event_loop_policy() and (asyncio.get_running_loop().time() - _last_queue_cleanup) > 3600:
+            cutoff = now - timedelta(days=30)
+            db.query(models.ProcessedWebhookMessage).filter(
+                models.ProcessedWebhookMessage.status.in_(["processed", "failed"]),
+                models.ProcessedWebhookMessage.received_at < cutoff,
+            ).delete(synchronize_session=False)
+            db.commit()
+            _last_queue_cleanup = asyncio.get_running_loop().time()
+
+        record = (
+            db.query(models.ProcessedWebhookMessage)
+            .filter_by(status="pending", provider="meta_whatsapp")
+            .order_by(models.ProcessedWebhookMessage.received_at.asc())
+            .first()
+        )
+        if not record:
+            return None
+        message_id = record.message_id
+        payload_text = record.payload or "{}"
+        next_attempt = int(record.attempts or 0) + 1
+        changed = (
+            db.query(models.ProcessedWebhookMessage)
+            .filter_by(id=record.id, status="pending")
+            .update(
+                {
+                    models.ProcessedWebhookMessage.status: "processing",
+                    models.ProcessedWebhookMessage.attempts: next_attempt,
+                    models.ProcessedWebhookMessage.updated_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        if changed != 1:
+            db.rollback()
+            return None
+        db.commit()
+        return message_id, json.loads(payload_text), next_attempt
+    except Exception:
+        db.rollback()
+        logger.exception("Could not claim a queued WhatsApp message")
+        return None
     finally:
         db.close()
 
@@ -266,6 +327,94 @@ def _finish_whatsapp_message(message_id: str, status: str) -> None:
         db.close()
 
 
+async def _process_whatsapp_message(message: dict) -> None:
+    """Process one queued Meta message. Raise retryable failures to the queue worker."""
+    sender = str(message.get("from") or "").strip()
+    message_type = message.get("type")
+    if message_type == "text":
+        text_body = str((message.get("text") or {}).get("body") or "").strip()
+        if text_body:
+            answer = await _forward_to_existing_receptionist(sender, text_body)
+            await _send_text(sender, answer)
+        return
+
+    if message_type == "image":
+        media = message.get("image") or {}
+        content, mime = await _download_media(str(media.get("id") or ""))
+        caption = str(media.get("caption") or "").strip()
+        prompt = (
+            "You are Vaidya AI, a careful medical receptionist. Explain only what is visibly "
+            "readable or observable in this image in plain language. Do not diagnose, prescribe, "
+            "interpret a report as definitive medical advice, or recommend changing medication. "
+            "If it is a medical document, mention that a clinician must interpret clinical meaning. "
+            "If the image is unclear, say so. Respond in concise English, Hindi, or Hinglish based "
+            f"on this user message: {caption or 'Please describe this image.'}"
+        )
+        answer = await _gemini_media_prompt(content, mime, prompt)
+        await _save_image_conversation(sender, caption or "[Image sent]", answer)
+        await _send_text(sender, answer)
+        return
+
+    if message_type == "audio":
+        media = message.get("audio") or {}
+        content, mime = await _download_media(str(media.get("id") or ""))
+        if mime not in AUDIO_TYPES:
+            raise HTTPException(status_code=415, detail="Unsupported audio format.")
+        transcript = await _gemini_media_prompt(
+            content, mime,
+            "Transcribe the spoken words exactly, preserving the language used (Hindi, English, "
+            "or Hinglish). Return only the transcript. Do not answer the speaker's question."
+        )
+        if not transcript.strip():
+            await _send_text(sender, "I couldn't understand the voice message. Please send it again or type your message.")
+        else:
+            answer = await _forward_to_existing_receptionist(sender, transcript)
+            await _send_text(sender, answer)
+        return
+
+    await _send_text(
+        sender,
+        "I can process text messages, voice notes, and images. Please send one of those formats.",
+    )
+
+
+async def process_pending_whatsapp_messages() -> None:
+    """Long-running durable queue worker. Pending rows survive app restarts."""
+    while True:
+        claimed = _claim_next_whatsapp_message()
+        if claimed is None:
+            await asyncio.sleep(1)
+            continue
+        message_id, message, attempts = claimed
+        try:
+            await _process_whatsapp_message(message)
+            _finish_whatsapp_message(message_id, "processed")
+        except HTTPException as exc:
+            logger.warning("Queued WhatsApp message failed | status=%s | attempt=%s", exc.status_code, attempts)
+            if exc.status_code in {400, 413, 415}:
+                # Invalid content is not going to become valid on a retry.
+                try:
+                    await _send_text(
+                        str(message.get("from") or ""),
+                        "Sorry, I couldn't process that media. Please send a supported file or a text message.",
+                    )
+                    _finish_whatsapp_message(message_id, "processed")
+                except Exception:
+                    _finish_whatsapp_message(
+                        message_id, "pending" if attempts < MAX_QUEUE_ATTEMPTS else "failed"
+                    )
+            else:
+                _finish_whatsapp_message(
+                    message_id, "pending" if attempts < MAX_QUEUE_ATTEMPTS else "failed"
+                )
+        except Exception:
+            logger.exception("Queued WhatsApp message failed | attempt=%s", attempts)
+            _finish_whatsapp_message(
+                message_id, "pending" if attempts < MAX_QUEUE_ATTEMPTS else "failed"
+            )
+        await asyncio.sleep(min(attempts, 5))
+
+
 @router.get("/whatsapp/webhook", response_class=PlainTextResponse)
 async def verify_whatsapp_webhook(request: Request):
     """Meta webhook verification endpoint."""
@@ -279,7 +428,7 @@ async def verify_whatsapp_webhook(request: Request):
 
 @router.post("/whatsapp/webhook")
 async def receive_whatsapp_webhook(request: Request):
-    """Receive Meta Cloud API text, image, and audio messages."""
+    """Verify and durably enqueue Meta messages, then acknowledge delivery."""
     content_length = request.headers.get("content-length")
     if content_length and content_length.isdigit() and int(content_length) > MAX_WEBHOOK_BYTES:
         raise HTTPException(status_code=413, detail="Webhook payload is too large.")
@@ -306,90 +455,29 @@ async def receive_whatsapp_webhook(request: Request):
     ):
         raise HTTPException(status_code=400, detail="Invalid WhatsApp webhook structure.")
 
-    processed = 0
-    failed = 0
+    queued = 0
+    duplicates = 0
     for entry in payload.get("entry", []):
-        for change in entry.get("changes", []):
+        if not isinstance(entry, dict):
+            continue
+        for change in entry.get("changes", []) or []:
+            if not isinstance(change, dict):
+                continue
             value = change.get("value") or {}
+            if not isinstance(value, dict):
+                continue
             for message in value.get("messages", []) or []:
+                if not isinstance(message, dict):
+                    continue
                 sender = str(message.get("from") or "").strip()
                 message_id = str(message.get("id") or "").strip()
                 if not sender or not message_id:
                     logger.warning("Skipping WhatsApp message without sender or provider message ID")
                     continue
-                if not _claim_whatsapp_message(message_id):
-                    logger.info("Skipping duplicate WhatsApp message")
-                    continue
-                message_type = message.get("type")
-                processing_status = "processed"
-                try:
-                    if message_type == "text":
-                        text = str((message.get("text") or {}).get("body") or "").strip()
-                        if text:
-                            answer = await _forward_to_existing_receptionist(sender, text)
-                            await _send_text(sender, answer)
-                            processed += 1
-                    elif message_type == "image":
-                        media = message.get("image") or {}
-                        content, mime = await _download_media(str(media.get("id") or ""))
-                        caption = str(media.get("caption") or "").strip()
-                        prompt = (
-                            "You are Vaidya AI, a careful medical receptionist. Explain only what is visibly "
-                            "readable or observable in this image in plain language. Do not diagnose, prescribe, "
-                            "interpret a report as definitive medical advice, or recommend changing medication. "
-                            "If it is a medical document, mention that a clinician must interpret clinical meaning. "
-                            "If the image is unclear, say so. Respond in concise English, Hindi, or Hinglish based "
-                            f"on this user message: {caption or 'Please describe this image.'}"
-                        )
-                        answer = await _gemini_media_prompt(content, mime, prompt)
-                        await _save_image_conversation(sender, caption or "[Image sent]", answer)
-                        await _send_text(sender, answer)
-                        processed += 1
-                    elif message_type == "audio":
-                        media = message.get("audio") or {}
-                        content, mime = await _download_media(str(media.get("id") or ""))
-                        if mime not in AUDIO_TYPES:
-                            raise HTTPException(status_code=415, detail="Unsupported audio format.")
-                        transcript = await _gemini_media_prompt(
-                            content, mime,
-                            "Transcribe the spoken words exactly, preserving the language used (Hindi, English, "
-                            "or Hinglish). Return only the transcript. Do not answer the speaker's question."
-                        )
-                        if not transcript.strip():
-                            await _send_text(sender, "I couldn't understand the voice message. Please send it again or type your message.")
-                        else:
-                            answer = await _forward_to_existing_receptionist(sender, transcript)
-                            await _send_text(sender, answer)
-                        processed += 1
-                    else:
-                        await _send_text(
-                            sender,
-                            "I can process text messages, voice notes, and images. Please send one of those formats.",
-                        )
-                except HTTPException as exc:
-                    processing_status = "failed"
-                    failed += 1
-                    logger.warning("WhatsApp message processing failed: %s", exc.detail)
-                    try:
-                        await _send_text(
-                            sender,
-                            "Sorry, I couldn't process that message. Please try again or send your question as text.",
-                        )
-                    except Exception:
-                        logger.exception("Could not send WhatsApp error reply")
-                except Exception:
-                    processing_status = "failed"
-                    failed += 1
-                    logger.exception("Unexpected WhatsApp message processing error")
-                    try:
-                        await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
-                    except Exception:
-                        logger.exception("Could not send WhatsApp error reply")
-                finally:
-                    _finish_whatsapp_message(message_id, processing_status)
+                if _claim_whatsapp_message(message_id, message):
+                    queued += 1
+                else:
+                    duplicates += 1
 
-    if failed:
-        # Meta retries non-2xx deliveries. Successfully processed message IDs are
-        # deduplicated, so retrying the envelope will not repeat their side effects.
-        raise HTTPException(status_code=500, detail="One or more messages failed; provider may retry.")
-    return {"status": "accepted", "processed": processed}
+    logger.info("WhatsApp webhook accepted | queued=%s duplicates=%s", queued, duplicates)
+    return {"status": "accepted", "queued": queued, "duplicates": duplicates}
