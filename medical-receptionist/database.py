@@ -22,6 +22,9 @@ elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
         "postgresql://", "postgresql+psycopg://", 1
     )
 
+if os.getenv("APP_ENV", "development").strip().lower() == "production" and not SQLALCHEMY_DATABASE_URL.startswith("postgresql+psycopg://"):
+    raise RuntimeError("Production requires DATABASE_URL for a managed PostgreSQL database.")
+
 engine_options = {"pool_pre_ping": True}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     engine_options["connect_args"] = {"check_same_thread": False}
