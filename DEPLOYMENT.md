@@ -1,13 +1,10 @@
 # Deployment Guide
 
-The repository contains two separate services:
-
-- `medical-receptionist`: FastAPI backend
-- `vaidyai-web`: Next.js frontend
+The current runnable application is the FastAPI service in `medical-receptionist`. The `vaidyai-web` directory contains static HTML design prototypes, not a runnable Next.js app (there is no root `package.json`).
 
 ## Recommended deployment
 
-Use a Python web service for the FastAPI backend, a Node web service for the Next.js frontend, and managed PostgreSQL for persistent application data. The backend is not a static site and should not be deployed as a Vercel-only frontend function.
+Use a Python web service for the FastAPI application and managed PostgreSQL for persistent application data. The existing chat and admin HTML pages are served by FastAPI; do not configure a Node/Next.js service until an actual frontend app with a package manifest exists.
 
 ### Backend service
 
@@ -26,7 +23,7 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
 Set these environment variables in the hosting provider's secret/configuration UI. Never commit real values:
@@ -56,27 +53,19 @@ Set these environment variables in the hosting provider's secret/configuration U
 
 Do not set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in production. Create a Google Cloud service account, enable the Google Calendar API, share the clinic calendar with the service account's `client_email`, and store the full service-account JSON in `GOOGLE_SERVICE_ACCOUNT_JSON`. Set `GOOGLE_CALENDAR_ID` to the shared clinic calendar's ID. Local development can continue to use `client_secret.json` and `token.json`.
 
-### Frontend service
+### Existing web UI
 
-Use Vercel or a Node web service. If using Render:
+The current UI files are `medical-receptionist/static/chat.html` and `medical-receptionist/static/admin.html`, served by FastAPI at `/chat` and `/admin`. The `vaidyai-web` directory currently contains HTML design prototypes only, so the Node deployment shown in older notes is not runnable. Do not deploy it as Next.js until a real app and `package.json` are added.
 
-- Root directory: `vaidyai-web`
-- Build command: `npm ci && npm run build`
-- Start command: `npm run start -- -p $PORT`
-- Set `NEXT_PUBLIC_BACKEND_URL` to the public backend URL.
-
-After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend. The internal `/webhook` endpoint is authenticated with a timestamped HMAC in production and must not be called directly from browser code. The static chat page therefore needs a separate public-chat endpoint with server-verified bot protection (such as Turnstile), quotas, and a flow that cannot bypass explicit booking confirmation before being enabled for production. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
+The browser chat uses the rate-limited `POST /chat` route; the server-to-server `POST /webhook` route requires HMAC in production. Before exposing public chat to real users, put server-verified bot protection and gateway/WAF controls in front of `/chat`. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
 
 ## Smoke tests
 
 1. `GET https://<backend-host>/health` should return JSON with `status: ok`.
 2. Confirm the frontend can reach the backend from its configured origin.
 3. Test admin login with the environment-bootstrapped account and verify protected patient/appointment endpoints reject requests without a bearer token.
-4. Test booking, calendar failure handling, cancellation, and repeated WhatsApp webhook delivery in a staging calendar.
-5. Confirm webhook signature validation works using Meta's real test app before enabling production traffic.
-6. Send the same signed WhatsApp message twice and verify the queue processes it once.
-7. Simulate a temporary provider/AI failure and verify the queue retries up to five attempts; inspect failed rows before retrying manually.
-
+4. Test booking, calendar failure handling, cancellation, and duplicate booking requests in a staging calendar.
+5. 
 ## Safety and rollback
 
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
