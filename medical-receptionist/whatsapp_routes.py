@@ -136,7 +136,7 @@ async def _gemini_media_prompt(content: bytes, mime: str, prompt: str) -> str:
             raise ValueError("The model returned an empty answer.")
         return answer[:3500]
     except Exception as exc:
-        logger.exception("Gemini multimodal request failed: %s", exc)
+        logger.error("Gemini multimodal request failed | error_type=%s", type(exc).__name__)
         raise HTTPException(
             status_code=502,
             detail="I could not process that media right now. Please try again or send a text message.",
@@ -195,7 +195,7 @@ async def _forward_to_existing_receptionist(user_id: str, message: str) -> str:
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Forwarding WhatsApp text to existing /webhook failed: %s", exc)
+        logger.error("Forwarding WhatsApp text to internal receptionist failed | error_type=%s", type(exc).__name__)
         raise HTTPException(
             status_code=502,
             detail="Vaidya AI could not process the message. Please try again shortly.",
