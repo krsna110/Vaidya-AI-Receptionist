@@ -376,7 +376,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
             models.Appointment.date == appt_date,
             models.Appointment.time == appt_time,
             models.Appointment.reason == reason,
-            models.Appointment.booking_status.in_(["pending", "confirmed"]),
+            models.Appointment.booking_status.in_(["pending", "confirmed", "failed"]),
         )
         .first()
     )
@@ -701,6 +701,7 @@ async def cancel_appointment(
             raise HTTPException(status_code=502, detail="Google Calendar cancellation failed; appointment was not changed.")
 
     appointment.is_confirmed = False
+    appointment.booking_status = "cancelled"
     db.add(appointment)
     db.commit()
     return {"status": "cancelled", "appointment_id": appointment_id}
@@ -961,17 +962,9 @@ async def webhook_receiver(
                 response_text = "I could not reserve that slot. Please choose a different date or time."
         except Exception as e:
             db.rollback()
-            # A committed pending reservation must never be presented as confirmed
-            # after a downstream calendar error.
-            appt_id = locals().get("appt_id")
-            if appt_id:
-                failed_appointment = db.query(models.Appointment).filter(
-                    models.Appointment.id == appt_id
-                ).first()
-                if failed_appointment and not failed_appointment.google_event_id:
-                    failed_appointment.is_confirmed = False
-                    failed_appointment.booking_status = "failed"
-                    db.commit()
+            # Keep the durable reservation pending when the external Calendar result
+            # is ambiguous. A retry reuses the same appointment ID and can recover
+            # an event through its private Calendar booking reference.
             logger.error("Appointment creation failed | session_id=%s | error_type=%s", user_id, type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
