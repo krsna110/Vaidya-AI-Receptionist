@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/whatsapp-voice-image
+      - fix/production-readiness
   pull_request:
     branches:
       - main
