@@ -9,6 +9,7 @@ os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test-verify")
 os.environ.setdefault("WHATSAPP_APP_SECRET", "test-secret")
 
 from whatsapp_app import app
+from whatsapp_routes import _claim_whatsapp_message, _finish_whatsapp_message
 
 
 class WhatsAppAppSmokeTests(unittest.IsolatedAsyncioTestCase):
@@ -44,6 +45,12 @@ class WhatsAppAppSmokeTests(unittest.IsolatedAsyncioTestCase):
             json={"object": "whatsapp_business_account", "entry": []},
         )
         self.assertEqual(response.status_code, 401)
+
+    async def test_duplicate_provider_message_is_not_claimed_twice(self):
+        message_id = "ci-idempotency-regression-message"
+        self.assertTrue(_claim_whatsapp_message(message_id))
+        _finish_whatsapp_message(message_id, "processed")
+        self.assertFalse(_claim_whatsapp_message(message_id))
 
     async def test_webhook_accepts_valid_signature(self):
         body = b'{"object":"whatsapp_business_account","entry":[]}'
