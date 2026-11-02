@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 import os
@@ -602,7 +603,7 @@ async def webhook_receiver(
     current_state = conversation_state.state
 
     logger.info(f"Webhook received: session={user_id}")
-    logger.info(f"User {user_id} | state={current_state} | msg={message!r}")
+    logger.info("Webhook message received | state=%s | message_length=%s", current_state, len(message))
 
     # Fetch last 6 messages for conversation history
     conversation_history = [
@@ -658,7 +659,7 @@ async def webhook_receiver(
 
     # --- Generate AI response with error handling ---
     try:
-        agent_response = agent.generate_response(message, conversation_history)
+        agent_response = await asyncio.to_thread(agent.generate_response, message, conversation_history)
         intent = agent_response.get("intent", "UNKNOWN")
         response_text = agent_response.get("response", "Sorry, something went wrong.")
         data = agent_response.get("data", {})
@@ -700,8 +701,8 @@ async def webhook_receiver(
         logger.error(f"Failed to save conversation history for user {user_id}: {e}", exc_info=True)
 
     # Extract patient data using the new agent method
-    extracted_patient_data = agent.extract_patient_data(message, conversation_history)
-    logger.info(f"Extracted patient data: {extracted_patient_data}")
+    extracted_patient_data = await asyncio.to_thread(agent.extract_patient_data, message, conversation_history)
+    logger.info("Patient data extraction completed")
 
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
