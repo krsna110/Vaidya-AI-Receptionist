@@ -428,15 +428,15 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def debug_auth_middleware(request: Request, call_next):
-    import traceback
-    print(f"REQUEST: {request.method} {request.url.path}")
-    print(f"HEADERS: {dict(request.headers)}")
+async def request_logging_middleware(request: Request, call_next):
+    # Never log request headers: they can contain bearer tokens and API credentials.
     response = await call_next(request)
-    print(f"RESPONSE STATUS: {response.status_code}")
-    if response.status_code == 401:
-        print("401 DETECTED - checking stack")
-        traceback.print_stack()
+    logger.info(
+        "HTTP request completed | method=%s path=%s status=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+    )
     return response
 
 # Mount Static Files (directory relative to CWD which is medical-receptionist/)
