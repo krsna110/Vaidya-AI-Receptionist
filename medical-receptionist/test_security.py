@@ -1,5 +1,9 @@
+import hashlib
+import hmac
+import json
 import os
 import unittest
+from datetime import datetime, timezone
 
 import httpx
 
@@ -7,9 +11,11 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("JWT_SECRET", "test-only-secret-for-unit-tests")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_ci.db")
 os.environ.setdefault("FRONTEND_ORIGINS", "https://frontend.example.test")
+os.environ.setdefault("ALLOW_UNAUTHENTICATED_WEBHOOK", "true")
 
 from auth import create_access_token, hash_password, verify_password, verify_token
 from fastapi import HTTPException
+import main as main_module
 from main import app
 from database import SessionLocal
 import models
@@ -110,6 +116,55 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             )
             statuses.append(response.status_code)
         self.assertIn(429, statuses)
+
+    async def test_production_webhook_rejects_missing_and_invalid_internal_signatures(self):
+        keys = ("ENVIRONMENT", "VAIDYA_INTERNAL_WEBHOOK_SECRET", "ALLOW_UNAUTHENTICATED_WEBHOOK")
+        original = {key: os.environ.get(key) for key in keys}
+        limiter_enabled = main_module.limiter.enabled
+        main_module.limiter.enabled = False
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["VAIDYA_INTERNAL_WEBHOOK_SECRET"] = "test-internal-secret"
+        # A development bypass must never override production authentication.
+        os.environ["ALLOW_UNAUTHENTICATED_WEBHOOK"] = "true"
+        payload = {"session_id": "signed-webhook-test", "message": "test"}
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        timestamp = str(int(datetime.now(timezone.utc).timestamp()))
+        try:
+            missing = await self.client.post("/webhook", content=body, headers={"Content-Type": "application/json"})
+            self.assertEqual(missing.status_code, 401)
+
+            invalid = await self.client.post(
+                "/webhook",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Vaidya-Timestamp": timestamp,
+                    "X-Vaidya-Signature": "sha256=" + ("0" * 64),
+                },
+            )
+            self.assertEqual(invalid.status_code, 401)
+
+            signed_payload = timestamp.encode("ascii") + b"." + body
+            signature = "sha256=" + hmac.new(
+                b"test-internal-secret", signed_payload, hashlib.sha256
+            ).hexdigest()
+            valid = await self.client.post(
+                "/webhook",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Vaidya-Timestamp": timestamp,
+                    "X-Vaidya-Signature": signature,
+                },
+            )
+            self.assertEqual(valid.status_code, 200)
+        finally:
+            main_module.limiter.enabled = limiter_enabled
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     async def test_cors_does_not_reflect_unconfigured_origin(self):
         response = await self.client.options(
