@@ -58,7 +58,7 @@ def upgrade() -> None:
         duplicate_slots = op.get_bind().execute(sa.text("""
             SELECT date, time, COUNT(*) AS total
             FROM appointments
-            WHERE is_confirmed = 1 AND date IS NOT NULL AND time IS NOT NULL
+            WHERE is_confirmed IS TRUE AND date IS NOT NULL AND time IS NOT NULL
             GROUP BY date, time
             HAVING COUNT(*) > 1
         """)).fetchall()
