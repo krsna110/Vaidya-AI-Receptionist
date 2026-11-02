@@ -2,6 +2,8 @@
 import os
 import unittest
 from datetime import date, datetime, timedelta
+from unittest.mock import Mock
+from googleapiclient.errors import HttpError
 from zoneinfo import ZoneInfo
 
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -16,27 +18,61 @@ from calendar_service import GoogleCalendarService
 
 
 class FakeEvents:
-    def __init__(self, events):
+    def __init__(self, events, delete_error=None):
         self.items = events
+        self.delete_error = delete_error
         self.last_query = None
+        self.last_deleted_event_id = None
+        self.operation = "list"
 
     def list(self, **kwargs):
+        self.operation = "list"
+        self.last_query = kwargs
+        return self
+
+    def delete(self, **kwargs):
+        self.operation = "delete"
+        self.last_deleted_event_id = kwargs.get("eventId")
         self.last_query = kwargs
         return self
 
     def execute(self):
+        if self.operation == "delete":
+            if self.delete_error is not None:
+                raise self.delete_error
+            return {}
         return {"items": self.items}
 
 
 class FakeCalendar:
-    def __init__(self, events):
-        self.events_api = FakeEvents(events)
+    def __init__(self, events, delete_error=None):
+        self.events_api = FakeEvents(events, delete_error=delete_error)
 
     def events(self):
         return self.events_api
 
 
 class CalendarSlotTests(unittest.TestCase):
+    def test_cancelling_already_deleted_calendar_event_is_idempotent(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        not_found = HttpError(Mock(status=404), b"event not found")
+        service.service = FakeCalendar([], delete_error=not_found)
+
+        self.assertTrue(service.cancel_appointment("already-deleted-event"))
+        self.assertEqual(
+            service.service.events_api.last_deleted_event_id,
+            "already-deleted-event",
+        )
+
+    def test_calendar_cancellation_failure_other_than_not_found_is_not_ignored(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        forbidden = HttpError(Mock(status=403), b"permission denied")
+        service.service = FakeCalendar([], delete_error=forbidden)
+
+        self.assertFalse(service.cancel_appointment("event-with-permission-error"))
+
     def test_slot_overlap_uses_timezone_aware_event_times(self):
         clinic_tz = ZoneInfo("Asia/Kolkata")
         future_day = datetime.now(clinic_tz).date() + timedelta(days=10)
