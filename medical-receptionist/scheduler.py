@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -18,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 class Scheduler:
     def __init__(self):
-        self.scheduler = AsyncIOScheduler()
+        self.timezone = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
+        self.scheduler = AsyncIOScheduler(timezone=self.timezone)
         try:
             self.calendar_service = GoogleCalendarService()
         except Exception as e:
@@ -34,7 +36,7 @@ class Scheduler:
         logger.info("Running reminder job...")
         session = SessionLocal()
         try:
-            tomorrow = datetime.now().date() + timedelta(days=1)
+            tomorrow = datetime.now(self.timezone).date() + timedelta(days=1)
             appointments = (
                 session.query(Appointment)
                 .filter(
@@ -54,9 +56,7 @@ class Scheduler:
                         f"Reminder: Your appointment for {appt.reason} "
                         f"is tomorrow, {appt.date} at {appt.time}."
                     )
-                    logger.info(
-                        f"Reminder for {patient_name} ({patient_phone}): {reminder_message}"
-                    )
+                    logger.info("Reminder prepared | appointment_id=%s", appt.id)
 
                     appt.reminder_status = "pending_reminder"
                     session.add(appt)
@@ -75,7 +75,7 @@ class Scheduler:
         logger.info("Running follow-up job...")
         session = SessionLocal()
         try:
-            today = datetime.now().date()
+            today = datetime.now(self.timezone).date()
             appointments = (
                 session.query(Appointment)
                 .filter(
@@ -94,9 +94,7 @@ class Scheduler:
                         f"Hello {patient_name}, how was your {appt.reason} "
                         f"appointment today? We appreciate your feedback."
                     )
-                    logger.info(
-                        f"Follow-up for {patient_name} ({patient_phone}): {followup_message}"
-                    )
+                    logger.info("Follow-up prepared | appointment_id=%s", appt.id)
 
                     appt.followup_status = "pending_followup"
                     session.add(appt)

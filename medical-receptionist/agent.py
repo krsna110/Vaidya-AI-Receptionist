@@ -13,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not GEMINI_API_KEY:
@@ -148,7 +149,7 @@ CLINIC CONTEXT:
         if self.gemini_client:
             try:
                 response = self.gemini_client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model=GEMINI_MODEL,
                     contents=name_prompt,
                 )
                 extracted_name = (response.text or "").strip()
@@ -193,12 +194,12 @@ CLINIC CONTEXT:
 
         if self.gemini_client and self.gemini_api_key:
             try:
-                logger.info("Using Gemini (gemini-2.0-flash) for response generation...")
+                logger.info("Using Gemini (%s) for response generation...", GEMINI_MODEL)
 
                 async def gemini_call() -> dict:
                     response = await asyncio.to_thread(
                         self.gemini_client.models.generate_content,
-                        model="gemini-2.0-flash",
+                        model=GEMINI_MODEL,
                         contents=full_prompt,
                     )
                     parsed = self._extract_json(response.text)

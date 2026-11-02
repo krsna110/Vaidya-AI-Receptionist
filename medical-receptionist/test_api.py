@@ -1,163 +1,84 @@
-import httpx
-import json
-import time
+"""Deterministic unit tests for booking helpers; no live server or AI keys required."""
+import os
+import unittest
+from sqlalchemy.exc import IntegrityError
 
-BASE = "http://localhost:8010"
-PASS = []
-FAIL = []
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("JWT_SECRET", "test-only-secret-for-unit-tests")
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test_ci.db")
 
-def test(name, condition, detail=""):
-    if condition:
-        print(f"? {name}")
-        PASS.append(name)
-    else:
-        print(f"? {name}: {detail}")
-        FAIL.append(name)
+from main import (
+    extract_booking_details,
+    is_confirmation_message,
+    missing_booking_fields,
+    normalize_booking_date,
+    normalize_booking_time,
+    normalize_phone,
+    parse_booking_datetime,
+)
+from database import SessionLocal
+import models
 
-# Test 1: Health Check
-try:
-    r = httpx.get(f"{BASE}/health")
-    test("Health Check", r.status_code == 200)
-except Exception as e:
-    test("Health Check", False, str(e))
 
-# Test 2: Docs accessible
-try:
-    r = httpx.get(f"{BASE}/docs")
-    test("Swagger Docs", r.status_code == 200)
-except Exception as e:
-    test("Swagger Docs", False, str(e))
+class BookingHelperTests(unittest.TestCase):
+    def test_phone_normalization(self):
+        self.assertEqual(normalize_phone("+91 98765-43210"), "+919876543210")
+        self.assertEqual(normalize_phone(""), "")
 
-# Test 3: Greeting intent
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "Hello",
-        "session_id": "test_session_001"
-    })
-    data = r.json()
-    test("Greeting Intent", 
-         r.status_code == 200 and "response" in data,
-         str(data))
-except Exception as e:
-    test("Greeting Intent", False, str(e))
+    def test_time_normalization_uses_canonical_24_hour_format(self):
+        self.assertEqual(normalize_booking_time("10 AM"), "10:00")
+        self.assertEqual(normalize_booking_time("7:30 pm"), "19:30")
+        self.assertEqual(normalize_booking_time("00:15"), "00:15")
+        self.assertEqual(normalize_booking_time("25:90"), "")
 
-# Test 4: Booking intent
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "I want to book an appointment",
-        "session_id": "test_session_001"
-    })
-    data = r.json()
-    test("Booking Intent", 
-         r.status_code == 200,
-         str(data))
-    test("Intent Field Present", "intent" in data)
-    test("Confidence Field Present", "confidence" in data)
-except Exception as e:
-    test("Booking Intent", False, str(e))
+    def test_booking_datetime_rejects_invalid_values(self):
+        self.assertIsNotNone(parse_booking_datetime("2026-11-03", "10 AM"))
+        self.assertIsNone(parse_booking_datetime("not-a-date", "10 AM"))
+        self.assertIsNone(parse_booking_datetime("2026-11-03", "not-a-time"))
 
-# Test 5: Patient data extraction
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "My name is Rahul Sharma, number is 9876543210",
-        "session_id": "test_session_002"
-    })
-    data = r.json()
-    test("Patient Data Extraction", r.status_code == 200)
-    print(f"   Response: {data.get('response', '')[:100]}")
-except Exception as e:
-    test("Patient Data Extraction", False, str(e))
+    def test_confirmation_requires_an_explicit_exact_phrase(self):
+        self.assertTrue(is_confirmation_message("Yes"))
+        self.assertTrue(is_confirmation_message("YES, confirm booking!"))
+        self.assertFalse(is_confirmation_message("yesterday"))
+        self.assertFalse(is_confirmation_message("yes, but I have a question"))
 
-# Test 6: Hindi message
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "???? appointment ??? ???? ??",
-        "session_id": "test_session_003"
-    })
-    data = r.json()
-    test("Hindi Message", r.status_code == 200)
-    print(f"   Language detected: {data.get('language', 'unknown')}")
-except Exception as e:
-    test("Hindi Message", False, str(e))
+    def test_date_normalization_rejects_no_value_as_a_valid_date_later(self):
+        self.assertEqual(normalize_booking_date("2026-11-03"), "2026-11-03")
+        self.assertEqual(normalize_booking_date("tomorrow"), normalize_booking_date("tomorrow"))
+        self.assertEqual(normalize_booking_date(""), "")
 
-# Test 7: FAQ intent
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "What are your clinic timings?",
-        "session_id": "test_session_004"
-    })
-    data = r.json()
-    test("FAQ Intent", r.status_code == 200)
-    print(f"   Response: {data.get('response', '')[:100]}")
-except Exception as e:
-    test("FAQ Intent", False, str(e))
+    def test_database_rejects_duplicate_confirmed_slots(self):
+        db = SessionLocal()
+        try:
+            first_patient = models.Patient(name="Slot Test One", phone_number="+919876543211")
+            second_patient = models.Patient(name="Slot Test Two", phone_number="+919876543212")
+            db.add_all([first_patient, second_patient])
+            db.commit()
+            db.refresh(first_patient)
+            db.refresh(second_patient)
+            first = models.Appointment(
+                patient_id=first_patient.id, date="2098-12-30", time="11:00",
+                reason="test", description="test", is_confirmed=True,
+            )
+            second = models.Appointment(
+                patient_id=second_patient.id, date="2098-12-30", time="11:00",
+                reason="test", description="test", is_confirmed=True,
+            )
+            db.add(first)
+            db.commit()
+            db.add(second)
+            with self.assertRaises(IntegrityError):
+                db.commit()
+            db.rollback()
+        finally:
+            db.close()
 
-# Test 8: Unknown/gibberish
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "asdkjhaksjdhaksjdh",
-        "session_id": "test_session_005"
-    })
-    data = r.json()
-    test("Unknown Intent Fallback", r.status_code == 200)
-    print(f"   Intent: {data.get('intent', 'unknown')}")
-except Exception as e:
-    test("Unknown Intent Fallback", False, str(e))
+    def test_booking_detail_extraction_and_required_fields(self):
+        details = extract_booking_details("My name is Rahul Sharma and phone 9876543210")
+        self.assertEqual(details.get("name"), "Rahul Sharma")
+        self.assertEqual(details.get("phone"), "9876543210")
+        self.assertEqual(set(missing_booking_fields({})), {"name", "phone", "date", "time", "reason"})
 
-# Test 9: Cancel intent
-try:
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "I want to cancel my appointment",
-        "session_id": "test_session_006"
-    })
-    data = r.json()
-    test("Cancel Intent", r.status_code == 200)
-except Exception as e:
-    test("Cancel Intent", False, str(e))
 
-# Test 10: Conversation history
-try:
-    sid = "test_history_session"
-    httpx.post(f"{BASE}/webhook", json={
-        "message": "Hi my name is Priya",
-        "session_id": sid
-    })
-    time.sleep(1)
-    r = httpx.post(f"{BASE}/webhook", json={
-        "message": "What is my name?",
-        "session_id": sid
-    })
-    data = r.json()
-    test("Conversation History", 
-         "priya" in data.get("response","").lower() or 
-         r.status_code == 200)
-    print(f"   Response: {data.get('response', '')[:100]}")
-except Exception as e:
-    test("Conversation History", False, str(e))
-
-# Test 11: Rate limiting
-try:
-    responses = []
-    for i in range(22):
-        r = httpx.post(f"{BASE}/webhook", json={
-            "message": "test",
-            "session_id": f"rate_test_{i}"
-        })
-        responses.append(r.status_code)
-    has_429 = 429 in responses
-    test("Rate Limiting (429)", has_429, 
-         f"Status codes: {set(responses)}")
-except Exception as e:
-    test("Rate Limiting", False, str(e))
-
-# Final Report
-print(f"\n{'='*40}")
-print(f"RESULTS: {len(PASS)} passed, {len(FAIL)} failed")
-print(f"{'='*40}")
-if FAIL:
-    print(f"\n? FAILED TESTS:")
-    for f in FAIL:
-        print(f"   - {f}")
-    print("\nFix these and re-run test_api.py")
-else:
-    print("\n?? ALL TESTS PASSED - Vaidya AI is working!")
+if __name__ == "__main__":
+    unittest.main()

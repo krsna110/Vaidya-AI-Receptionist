@@ -5,12 +5,14 @@ This project implements an AI-powered medical receptionist system designed to as
 ## Tech Stack
 
 - **FastAPI**: Web framework for building the API.
-- **Gemini 2.0 Flash (google.ai.generativelanguage SDK)**: Primary Large Language Model for intent detection and response generation.
+- **Gemini API via `google-genai` (default model: Gemini 3.8 Flash)**: Primary Large Language Model for intent detection and response generation.
 - **Groq (Python SDK)**: Fallback Large Language Model when Gemini is unavailable or rate-limited.
 - **langdetect**: Library for automatic language detection (English, Hindi, Hinglish).
 - **Google Calendar API (google-api-python-client + google-auth-oauthlib)**: For managing appointments.
 - **SQLite**: Database for storing conversation states and appointment details.
 - **APScheduler**: For scheduling reminder and follow-up jobs.
+- **Alembic**: For versioned database schema migrations.
+- **Database-backed WhatsApp queue**: Durable message processing, duplicate suppression, bounded retries, and 30-day retention for completed/dead-letter records.
 - **Python-dotenv**: For managing environment variables.
 
 ## Project Structure
@@ -37,7 +39,7 @@ Follow these steps to set up and run the project locally.
 
 ```bash
 git clone <repository_url>
-cd medical-ai-receptionist
+cd Vaidya-AI-Receptionist
 ```
 
 ### 2. Create a Python Virtual Environment
@@ -75,7 +77,7 @@ To use the Google Calendar API, you need to set up OAuth2 credentials:
 4.  Go to "APIs & Services" > "Credentials".
 5.  Click "+ Create Credentials" and choose "OAuth client ID".
 6.  Select "Desktop app" as the application type and give it a name.
-7.  After creating, download the `client_secret.json` file. **Rename it to `client_secret.json` and place it in the root directory of your project (alongside `main.py`, `agent.py`, etc.).**
+7.  After creating, download the `client_secret.json` file. **Rename it to `client_secret.json` and place it in `medical-receptionist/` alongside `main.py`, `agent.py`, etc.**
 8.  The first time `calendar_service.py` runs, it will open a browser window for you to authenticate with your Google account and grant permissions. After successful authentication, a `token.json` file will be created, storing your refresh token for future use.
 
 ### 6. Set up Environment Variables
@@ -91,20 +93,28 @@ Edit the `.env` file:
 ```
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 GROQ_API_KEY="YOUR_GROQ_API_KEY"
-DATABASE_URL="sqlite:///./medical-receptionist/sql_app.db"
+DATABASE_URL="sqlite:///./sql_app.db"
+GEMINI_MODEL="gemini-3.8-flash"
+GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
+JWT_SECRET="a-long-random-secret"
+ENVIRONMENT="development"
+FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
--   **GEMINI_API_KEY**: Obtain this from the [Google AI Studio](https://makersuite.google.com/key).
+-   **GEMINI_API_KEY**: Obtain this from [Google AI Studio](https://aistudio.google.com/).
 -   **GROQ_API_KEY**: Obtain this from the [Groq Console](https://console.groq.com/keys).
 -   **DATABASE_URL**: The default SQLite path is already provided. You generally don't need to change this unless you're using a different database.
 
 ### 7. Run the FastAPI Server
 
 ```bash
-uvicorn medical-receptionist.main:app --reload
+cd medical-receptionist
+uvicorn whatsapp_app:app --reload
 ```
 
-This will start the development server. You should see output indicating that the server is running, typically at `http://127.0.0.1:8000`.
+This starts the existing FastAPI app and registers the Meta WhatsApp media routes. Without WhatsApp credentials, the existing local API still starts; the WhatsApp webhook returns a configuration error until you set its credentials.
+
+The development server should be available at `http://127.0.0.1:8000`. For local use, run the command from the `medical-receptionist/` directory so the static files and `.env` are resolved correctly.
 
 ### 8. Access the Chat UI
 
@@ -114,7 +124,7 @@ Open your web browser and navigate to:
 http://127.0.0.1:8000/chat
 ```
 
-The chat UI will automatically authenticate and start a conversation with the AI receptionist.
+The chat UI can start a conversation with the AI receptionist. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
 
 ### 9. Test with Swagger UI (API Documentation)
 
@@ -133,14 +143,12 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Status Code: 200 OK
 
 -   **POST `/auth/token`**
-    -   Description: Authenticates a user and returns an access token.
-    -   Request Body (Form Data):
-        -   `username`: `admin`
-        -   `password`: `password`
+    -   Description: Authenticates a database-backed user and returns a short-lived access token. Bootstrap the first admin with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
+    -   Request Body: OAuth2 form fields `username` and `password`.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
--   **POST `/webhook` (JWT Protected)**
-    -   Description: Receives incoming webhook events (e.g., from a messaging platform) and processes them through the AI agent.
+-   **POST `/webhook` (public chat endpoint)**
+    -   Description: Accepts bounded, rate-limited chat messages for public browser clients. It is not JWT-protected because the browser chat is public; rate limiting and request validation reduce abuse but do not replace a gateway/WAF.
     -   Request Body (JSON):
         ```json
         {

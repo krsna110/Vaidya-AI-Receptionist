@@ -1,15 +1,17 @@
 # Deployment Guide
 
-This project has two deployable apps:
+The repository contains two separate services:
 
 - `medical-receptionist`: FastAPI backend
 - `vaidyai-web`: Next.js frontend
 
-## 1. Deploy Backend
+## Recommended deployment
 
-Use a Python host such as Render, Railway, Fly.io, or a VPS.
+Use a Python web service for the FastAPI backend, a Node web service for the Next.js frontend, and managed PostgreSQL for persistent application data. The backend is not a static site and should not be deployed as a Vercel-only frontend function.
 
-Backend root directory:
+### Backend service
+
+Root directory:
 
 ```text
 medical-receptionist
@@ -24,86 +26,54 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
 ```
 
-Environment variables:
+Set these environment variables in the hosting provider's secret/configuration UI. Never commit real values:
 
-```text
-SECRET_KEY=<long-random-secret>
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-GEMINI_API_KEY=<optional-gemini-key>
-GROQ_API_KEY=<optional-groq-key>
-DATABASE_URL=<optional-production-db-url>
-FRONTEND_ORIGINS=https://your-frontend-domain.vercel.app
-GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=false
-```
+| Variable | Requirement |
+|---|---|
+| `ENVIRONMENT` | Set to `production` |
+| `JWT_SECRET` | Required; generate a unique random secret |
+| `ADMIN_USERNAME` | Required for first admin bootstrap |
+| `ADMIN_PASSWORD` | Required for first admin bootstrap; at least 12 characters |
+| `DATABASE_URL` | Managed PostgreSQL connection string |
+| `FRONTEND_ORIGINS` | Exact deployed frontend origin(s), comma-separated |
+| `GEMINI_API_KEY` | Required for Gemini features |
+| `GROQ_API_KEY` | Optional fallback provider |
+| `CLINIC_TIMEZONE` | IANA timezone, e.g. `Asia/Kolkata` |
+| `CLINIC_OPEN_HOUR` / `CLINIC_CLOSE_HOUR` | Clinic hours in 24-hour local time |
+| `APPOINTMENT_DURATION_MINUTES` | Slot duration, default 30 |
+| `GOOGLE_CALENDAR_ID` | Calendar ID shared with the service account |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Production service-account JSON stored as a secret |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | Required only when enabling Meta WhatsApp |
 
-After backend deploys, test:
+Do not set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in production. Create a Google Cloud service account, enable the Google Calendar API, share the clinic calendar with the service account's `client_email`, and store the full service-account JSON in `GOOGLE_SERVICE_ACCOUNT_JSON`. Set `GOOGLE_CALENDAR_ID` to the shared clinic calendar's ID. Local development can continue to use `client_secret.json` and `token.json`.
 
-```text
-https://your-backend-domain/health
-```
+### Frontend service
 
-It should return:
+Use Vercel or a Node web service. If using Render:
 
-```json
-{"status":"healthy"}
-```
+- Root directory: `vaidyai-web`
+- Build command: `npm ci && npm run build`
+- Start command: `npm run start -- -p $PORT`
+- Set `NEXT_PUBLIC_BACKEND_URL` to the public backend URL.
 
-## 2. Deploy Frontend
+After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend. The browser chat endpoint intentionally remains public, so put a WAF or API gateway in front of it for production traffic and use Redis via `RATE_LIMIT_STORAGE_URI` when running multiple backend workers; the built-in IP limit is a baseline, not bot protection.
 
-Use Render as a Node web service or use Vercel for the Next.js app.
+## Smoke tests
 
-Frontend root directory:
+1. `GET https://<backend-host>/health` should return JSON with `status: ok`.
+2. Confirm the frontend can reach the backend from its configured origin.
+3. Test admin login with the environment-bootstrapped account and verify protected patient/appointment endpoints reject requests without a bearer token.
+4. Test booking, calendar failure handling, cancellation, and repeated WhatsApp webhook delivery in a staging calendar.
+5. Confirm webhook signature validation works using Meta's real test app before enabling production traffic.
+6. Send the same signed WhatsApp message twice and verify the queue processes it once.
+7. Simulate a temporary provider/AI failure and verify the queue retries up to five attempts; inspect failed rows before retrying manually.
 
-```text
-vaidyai-web
-```
-
-Render settings:
-
-```text
-Root Directory: vaidyai-web
-Runtime: Node
-Build Command: npm ci && npm run build
-Start Command: npm run start -- -p $PORT
-```
-
-Build command:
-
-```bash
-npm run build
-```
-
-Environment variables:
-
-```text
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-domain
-```
-
-Do not deploy this Next.js app as a Render Static Site unless you remove the Next API routes. Use a Render Web Service so `/api/*`, `/admin`, and `next start` work correctly.
-
-## 3. Connect Both Apps
-
-After the frontend URL is live, update the backend environment variable:
-
-```text
-FRONTEND_ORIGINS=https://your-frontend-domain.vercel.app
-```
-
-Redeploy/restart the backend.
-
-## 4. First Production Tests
-
-1. Open `https://your-backend-domain/health`.
-2. Open `https://your-frontend-domain.vercel.app/chat`.
-3. Send `hello` in the chat.
-4. Open `https://your-frontend-domain.vercel.app/admin`.
-
-## Notes
+## Safety and rollback
 
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
-- Gemini may return quota errors if the API key has no remaining quota. The backend falls back to Groq, then to local safe responses.
-- SQLite works for demos, but use a managed database for real production usage.
+- Take a database backup before migrations and retain the previous backend release for rollback. For a new empty database, the startup command applies all migrations automatically. For an existing database created before Alembic was added, take a backup, verify the schema, run `alembic stamp 0001_initial` from `medical-receptionist/`, then run `alembic upgrade head`; do not stamp an unverified database.
+- Use staging credentials and synthetic patient data for tests. Do not use real patient records in CI.
+- WhatsApp message payloads are persisted in the database queue for processing and retry. Completed and permanently failed queue rows are purged after 30 days; protect the database as it contains patient message content. The GitHub Actions suite does not verify live Meta delivery, real AI-provider quotas, or end-to-end Google Calendar writes; those require staging credentials and manual verification.

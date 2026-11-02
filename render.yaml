@@ -1,5 +1,52 @@
 services:
   - type: web
+    name: vaidyai-api
+    runtime: python
+    rootDir: medical-receptionist
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: RATE_LIMIT_STORAGE_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLINIC_TIMEZONE
+        value: Asia/Kolkata
+      - key: CLINIC_OPEN_HOUR
+        value: "9"
+      - key: CLINIC_CLOSE_HOUR
+        value: "18"
+      - key: APPOINTMENT_DURATION_MINUTES
+        value: "30"
+      - key: GOOGLE_CALENDAR_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+
+  - type: web
     name: vaidyai-web
     runtime: node
     rootDir: vaidyai-web
