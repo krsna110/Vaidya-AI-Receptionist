@@ -22,7 +22,7 @@ from google.genai import types
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["WhatsApp"])
 
-GRAPH_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v23.0")
+GRAPH_API_VERSION = os.getenv("WHATSAPP_API_VERSION") or "v26.0"
 ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
