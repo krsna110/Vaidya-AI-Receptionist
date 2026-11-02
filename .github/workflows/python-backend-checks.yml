@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+      - feat/whatsapp-voice-image
 
 jobs:
   unit-tests:
