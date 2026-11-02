@@ -49,7 +49,6 @@ Set these environment variables in the hosting provider's secret/configuration U
 | `ALLOW_UNAUTHENTICATED_WEBHOOK` | Set to `false` in production; the unsigned bypass is ignored in production |
 | `GOOGLE_CALENDAR_ID` | Calendar ID shared with the service account |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Production service-account JSON stored as a secret |
-| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | Required only when enabling Meta WhatsApp |
 
 Do not set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in production. Create a Google Cloud service account, enable the Google Calendar API, share the clinic calendar with the service account's `client_email`, and store the full service-account JSON in `GOOGLE_SERVICE_ACCOUNT_JSON`. Set `GOOGLE_CALENDAR_ID` to the shared clinic calendar's ID. Local development can continue to use `client_secret.json` and `token.json`.
 
@@ -65,10 +64,10 @@ The browser chat uses the rate-limited `POST /chat` route; the server-to-server 
 2. Confirm the frontend can reach the backend from its configured origin.
 3. Test admin login with the environment-bootstrapped account and verify protected patient/appointment endpoints reject requests without a bearer token.
 4. Test booking, calendar failure handling, cancellation, and duplicate booking requests in a staging calendar.
-5. 
+5. Verify the browser chat uses `/chat` and the internal `/webhook` rejects unsigned production requests.
 ## Safety and rollback
 
 - Do not deploy `.env`, `token.json`, `client_secret.json`, `sql_app.db`, `node_modules`, `.venv`, or `venv`.
 - Take a database backup before migrations and retain the previous backend release for rollback. For a new empty database, the startup command applies all migrations automatically. For an existing database created before Alembic was added, take a backup, verify the schema, run `alembic stamp 0001_initial` from `medical-receptionist/`, then run `alembic upgrade head`; do not stamp an unverified database.
 - Use staging credentials and synthetic patient data for tests. Do not use real patient records in CI.
-- WhatsApp message payloads are persisted in the database queue for processing and retry. Completed and permanently failed queue rows are purged after 30 days; protect the database as it contains patient message content. The GitHub Actions suite does not verify live Meta delivery, real AI-provider quotas, or end-to-end Google Calendar writes; those require staging credentials and manual verification.
+- The GitHub Actions suite does not verify real AI-provider quotas or end-to-end Google Calendar writes; those require staging credentials and manual verification.
