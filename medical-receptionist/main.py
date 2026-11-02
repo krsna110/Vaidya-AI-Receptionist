@@ -508,7 +508,10 @@ app = FastAPI(
 )
 
 # Rate limiter is initialized before route decorators use it.
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=os.getenv("RATE_LIMIT_STORAGE_URI", "memory://"),
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
