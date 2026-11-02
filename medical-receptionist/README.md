@@ -11,6 +11,8 @@ This project implements an AI-powered medical receptionist system designed to as
 - **Google Calendar API (google-api-python-client + google-auth-oauthlib)**: For managing appointments.
 - **SQLite**: Database for storing conversation states and appointment details.
 - **APScheduler**: For scheduling reminder and follow-up jobs.
+- **Alembic**: For versioned database schema migrations.
+- **Database-backed WhatsApp queue**: Durable message processing, duplicate suppression, bounded retries, and 30-day retention for completed/dead-letter records.
 - **Python-dotenv**: For managing environment variables.
 
 ## Project Structure
