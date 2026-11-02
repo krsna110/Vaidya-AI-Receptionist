@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import os
 import unittest
 from datetime import datetime, timezone
@@ -116,6 +117,25 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             )
             statuses.append(response.status_code)
         self.assertIn(429, statuses)
+
+    async def test_structured_logs_redact_phone_email_and_bearer_tokens(self):
+        record = logging.LogRecord(
+            name="security-test",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="patient phone=%s email=%s Authorization: Bearer %s",
+            args=("+919876543210", "patient@example.com", "sensitive-token-value"),
+            exc_info=None,
+        )
+        rendered = main_module.JsonLogFormatter().format(record)
+        payload = json.loads(rendered)
+        self.assertNotIn("+919876543210", rendered)
+        self.assertNotIn("patient@example.com", rendered)
+        self.assertNotIn("sensitive-token-value", rendered)
+        self.assertIn("[REDACTED_PHONE]", payload["message"])
+        self.assertIn("[REDACTED_EMAIL]", payload["message"])
+        self.assertIn("Bearer [REDACTED]", payload["message"])
 
     async def test_production_webhook_rejects_missing_and_invalid_internal_signatures(self):
         keys = ("ENVIRONMENT", "VAIDYA_INTERNAL_WEBHOOK_SECRET", "ALLOW_UNAUTHENTICATED_WEBHOOK")
