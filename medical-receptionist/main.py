@@ -338,10 +338,16 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         )
         return None
 
+    start_datetime = parse_booking_datetime(appt_date, appt_time)
+    if start_datetime is None:
+        return None
+    duration_minutes = int(os.getenv("APPOINTMENT_DURATION_MINUTES", "30"))
+    if duration_minutes <= 0 or duration_minutes > 240:
+        return None
     appointment = models.Appointment(
         patient_id=patient.id,
-        start_time=datetime.utcnow(),
-        end_time=None,
+        start_time=start_datetime,
+        end_time=start_datetime + timedelta(minutes=duration_minutes),
         description=reason,
         is_confirmed=True,
         date=appt_date,
@@ -349,7 +355,13 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         reason=reason,
     )
     db.add(appointment)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        # The database's partial unique index closes the race between simultaneous requests.
+        logger.warning("Appointment insert rejected, likely due to a conflicting slot.")
+        return None
     db.refresh(appointment)
     logger.info(
         f"Created appointment | id={appointment.id} | patient_id={patient.id} | date={appt_date} | time={appt_time}"
@@ -376,6 +388,12 @@ def sync_appointment_to_google_calendar(db: Session, appointment_id: int) -> str
         logger.warning(
             f"Could not parse appointment date/time for calendar sync | id={appointment.id} | date={appointment.date} | time={appointment.time}"
         )
+        return None
+
+    duration_minutes = int(os.getenv("APPOINTMENT_DURATION_MINUTES", "30"))
+    available_slots = calendar_service.get_available_slots(start_dt.date(), duration_minutes)
+    if start_dt.strftime("%H:%M") not in available_slots:
+        logger.warning("Calendar slot is no longer available | appointment_id=%s", appointment.id)
         return None
 
     event_id = calendar_service.book_appointment(
