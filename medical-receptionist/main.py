@@ -801,10 +801,7 @@ async def webhook_receiver(
     # Update conversation state based on intent and current state
     new_state = current_state
 
-    if intent == "GREETING":
-        new_state = "INTENT_DETECT"
-    elif current_state == "CONFIRM" and is_confirmation_message(message):
-        new_state = "BOOKED"
+    if current_state == "CONFIRM" and is_confirmation_message(message):
         try:
             appt_id = create_appointment_from_booking_data(db, merged_data)
             if appt_id:
@@ -812,14 +809,37 @@ async def webhook_receiver(
                 event_id = sync_appointment_to_google_calendar(db, appt_id)
                 if event_id:
                     merged_data["google_event_id"] = event_id
-                response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                    appointment = db.query(models.Appointment).filter(models.Appointment.id == appt_id).first()
+                    if appointment:
+                        appointment.is_confirmed = True
+                        db.commit()
+                    new_state = "BOOKED"
+                    response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                else:
+                    appointment = db.query(models.Appointment).filter(models.Appointment.id == appt_id).first()
+                    if appointment:
+                        appointment.is_confirmed = False
+                        db.commit()
+                    new_state = "COLLECT_INFO"
+                    response_text = (
+                        "I saved your appointment request, but could not confirm it with the clinic calendar. "
+                        "Please contact the clinic before visiting."
+                    )
             else:
                 new_state = "COLLECT_INFO"
-                response_text = "I could not create the appointment. Please choose a different date or time."
+                response_text = "I could not reserve that slot. Please choose a different date or time."
         except Exception as e:
-            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            db.rollback()
+            logger.error("Appointment creation failed | session_id=%s | error_type=%s", user_id, type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
+    elif current_state == "CONFIRM" and re.sub(r"[^a-z ]", " ", message.lower()).strip() in {
+        "no", "no thanks", "not now", "change it", "cancel", "do not confirm"
+    }:
+        new_state = "COLLECT_INFO"
+        response_text = "No problem. Tell me which appointment detail you would like to change."
+    elif intent == "GREETING":
+        new_state = "INTENT_DETECT"
     elif intent == "BOOKING":
         missing_fields = missing_booking_fields(merged_data)
         if "name" in missing_fields:
