@@ -67,16 +67,18 @@ def normalize_booking_date(raw_date: str) -> str:
     value = (raw_date or "").strip().lower()
     if not value:
         return ""
-    today_obj = date.today()
+    try:
+        from zoneinfo import ZoneInfo
+        today_obj = datetime.now(ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))).date()
+    except Exception:
+        today_obj = date.today()
     if value == "today":
         return today_obj.isoformat()
     if value in ("tomorrow", "tommorrow"):
         return (today_obj + timedelta(days=1)).isoformat()
-    # Accept already-ISO dates as-is
     try:
-        parsed = datetime.strptime(value, "%Y-%m-%d").date()
-        return parsed.isoformat()
-    except Exception:
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    except ValueError:
         return raw_date.strip()
 
 
@@ -88,29 +90,34 @@ def normalize_booking_time(raw_time: str) -> str:
     value = re.sub(r"\s+", " ", value)
     match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*([ap]m)?", value)
     if not match:
-        return raw_time.strip()
+        return ""
     hour = int(match.group(1))
-    minute = match.group(2) or "00"
+    minute = int(match.group(2) or "00")
     meridiem = match.group(3)
+    if minute > 59:
+        return ""
     if meridiem:
-        return f"{hour}:{minute} {meridiem.upper()}"
-    return f"{hour}:{minute}"
+        if hour < 1 or hour > 12:
+            return ""
+        hour = hour % 12 + (12 if meridiem == "pm" else 0)
+    elif hour > 23:
+        return ""
+    return f"{hour:02d}:{minute:02d}"
 
 
 def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
     """Parse booking date/time strings into a naive datetime for calendar creation."""
     if not iso_date or not time_text:
         return None
-    clean_time = (time_text or "").strip().upper().replace(".", "")
-    patterns = ["%I:%M %p", "%I %p", "%H:%M"]
-    for pattern in patterns:
-        try:
-            time_obj = datetime.strptime(clean_time, pattern).time()
-            date_obj = datetime.strptime(iso_date, "%Y-%m-%d").date()
-            return datetime.combine(date_obj, time_obj)
-        except Exception:
-            continue
-    return None
+    clean_time = normalize_booking_time(time_text)
+    if not clean_time:
+        return None
+    try:
+        time_obj = datetime.strptime(clean_time, "%H:%M").time()
+        date_obj = datetime.strptime(iso_date, "%Y-%m-%d").date()
+        return datetime.combine(date_obj, time_obj)
+    except ValueError:
+        return None
 
 
 def is_confirmation_message(message: str) -> bool:
@@ -268,6 +275,26 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
     reason = (data.get("reason") or "").strip()
 
     if not (name and phone and appt_date and appt_time and reason):
+        return None
+    if len(name) > 100 or len(reason) > 500 or len(phone) > 16:
+        return None
+    if not re.fullmatch(r"\+?\d{8,15}", phone):
+        return None
+    try:
+        parsed_date = datetime.strptime(appt_date, "%Y-%m-%d").date()
+        normalized_time = normalize_booking_time(appt_time)
+        if not normalized_time:
+            return None
+        appt_time = normalized_time
+        from zoneinfo import ZoneInfo
+        clinic_now = datetime.now(ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata")))
+        if parsed_date < clinic_now.date():
+            return None
+        if parsed_date == clinic_now.date():
+            parsed_start = datetime.combine(parsed_date, datetime.strptime(appt_time, "%H:%M").time())
+            if parsed_start <= clinic_now.replace(tzinfo=None):
+                return None
+    except (ValueError, TypeError):
         return None
 
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
