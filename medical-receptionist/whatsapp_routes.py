@@ -30,6 +30,7 @@ APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MULTIMODAL_MODEL = os.getenv("GEMINI_MULTIMODAL_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 INTERNAL_BASE_URL = os.getenv("VAIDYA_INTERNAL_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+WEBHOOK_SHARED_SECRET = os.getenv("WEBHOOK_SHARED_SECRET", "")
 MAX_MEDIA_BYTES = 12 * 1024 * 1024
 
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -162,8 +163,13 @@ async def _forward_to_existing_receptionist(user_id: str, message: str) -> str:
     """Reuse the existing text webhook; this preserves booking and Gemini/Groq fallback."""
     payload = {"user_id": user_id, "session_id": user_id, "message": message[:500]}
     try:
+        headers = {}
+        if WEBHOOK_SHARED_SECRET:
+            headers["X-Webhook-Secret"] = WEBHOOK_SHARED_SECRET
         async with httpx.AsyncClient(timeout=httpx.Timeout(35.0, connect=5.0)) as client:
-            response = await client.post(f"{INTERNAL_BASE_URL}/webhook", json=payload)
+            response = await client.post(
+                f"{INTERNAL_BASE_URL}/webhook", json=payload, headers=headers
+            )
             response.raise_for_status()
             data = response.json()
             return str(data.get("response") or "I couldn't process that message. Please try again.")[:3500]
