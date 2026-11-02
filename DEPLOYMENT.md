@@ -24,7 +24,7 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
 ```
 
 Environment variables:
