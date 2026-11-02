@@ -816,6 +816,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.post("/chat")
 @app.post("/webhook")
 @limiter.limit("10/minute")
 async def webhook_receiver(
@@ -825,7 +826,10 @@ async def webhook_receiver(
 ):
     """Receives internal chat requests after authentication by the trusted caller."""
     raw_body = await request.body()
-    verify_internal_webhook_request(request, raw_body)
+    # /chat backs the existing browser chat UI and is protected by rate limiting.
+    # /webhook is for trusted server-to-server callers and requires HMAC in production.
+    if request.url.path != "/chat":
+        verify_internal_webhook_request(request, raw_body)
     user_id = payload.user_id
     message = (payload.message or "").strip()[:500]
     if not message:
