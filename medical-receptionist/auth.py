@@ -23,6 +23,13 @@ if not SECRET_KEY:
     # when the process restarts unless the developer sets JWT_SECRET in .env.
     SECRET_KEY = secrets.token_urlsafe(48)
 
+if ENVIRONMENT in {"production", "prod"}:
+    if len(SECRET_KEY) < 32 or any(
+        marker in SECRET_KEY.lower()
+        for marker in ("replace_with", "change-me", "changeme", "your-secret")
+    ):
+        raise RuntimeError("JWT_SECRET must be a non-placeholder random secret of at least 32 characters.")
+
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 password_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
