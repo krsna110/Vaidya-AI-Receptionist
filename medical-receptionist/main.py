@@ -327,9 +327,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         .first()
     )
     if slot_conflict:
-        logger.warning(
-            f"Slot conflict: date={appt_date} time={appt_time} already booked by appointment_id={slot_conflict.id}"
-        )
+        logger.info("Booking rejected because the requested slot is already occupied")
         return None
 
     appointment = models.Appointment(
@@ -363,10 +361,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         logger.info("Appointment slot was claimed by a concurrent booking")
         return None
     db.refresh(appointment)
-    logger.info(
-        "Created appointment | id=%s | patient_id=%s | date=%s | time=%s",
-        appointment.id, patient.id, appt_date, appt_time,
-    )
+    logger.info("Created appointment record | appointment_id=%s", appointment.id)
     return appointment.id
 
 
