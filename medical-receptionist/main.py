@@ -4,7 +4,8 @@ import json
 import os
 import hashlib
 import re
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+from uuid import uuid4
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import RedirectResponse, FileResponse
@@ -44,10 +45,29 @@ from calendar_service import GoogleCalendarService
 from scheduler import Scheduler
 from database import engine, Base
 
-# ---------- Logging ----------
+# ---------- Structured logging ----------
+class JsonLogFormatter(logging.Formatter):
+    """Emit one JSON object per log record for host log search and alerting."""
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "request_id"):
+            payload["request_id"] = record.request_id
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False)
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(JsonLogFormatter())
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    handlers=[_handler],
+    force=True,
 )
 logger = logging.getLogger(__name__)
 
@@ -519,12 +539,18 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     # Never log request headers: they can contain bearer tokens and API credentials.
+    request_id = (request.headers.get("X-Request-ID") or uuid4().hex)[:64]
+    request.state.request_id = request_id
     response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
     logger.info(
-        "HTTP request completed | method=%s path=%s status=%s",
-        request.method,
-        request.url.path,
-        response.status_code,
+        "HTTP request completed",
+        extra={
+            "request_id": request_id,
+            "http_method": request.method,
+            "http_path": request.url.path,
+            "http_status": response.status_code,
+        },
     )
     return response
 
