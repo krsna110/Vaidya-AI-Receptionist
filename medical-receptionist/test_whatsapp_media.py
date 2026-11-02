@@ -3,7 +3,8 @@ import hmac
 import os
 import unittest
 
-os.environ.setdefault("WHATSAPP_APP_SECRET", "test-secret")
+os.environ["WHATSAPP_APP_SECRET"] = "test-secret"
+os.environ["WHATSAPP_VERIFY_TOKEN"] = "test-verify"
 
 from whatsapp_routes import _is_allowed_media_url, _mime_type, _valid_signature
 
