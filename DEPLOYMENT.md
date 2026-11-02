@@ -41,9 +41,15 @@ Set these environment variables in the hosting provider's secret/configuration U
 | `FRONTEND_ORIGINS` | Exact deployed frontend origin(s), comma-separated |
 | `GEMINI_API_KEY` | Required for Gemini features |
 | `GROQ_API_KEY` | Optional fallback provider |
+| `CLINIC_NAME` / `CLINIC_ADDRESS` | Real clinic name and address; never leave a placeholder |
 | `CLINIC_TIMEZONE` | IANA timezone, e.g. `Asia/Kolkata` |
 | `CLINIC_OPEN_HOUR` / `CLINIC_CLOSE_HOUR` | Clinic hours in 24-hour local time |
+| `CLINIC_WORKING_DAYS` | Comma-separated weekdays, Monday=0 through Sunday=6 |
+| `CLINIC_HOLIDAYS` | Comma-separated closed dates in `YYYY-MM-DD` format |
+| `CLINIC_BREAKS` | Optional comma-separated breaks, e.g. `13:00-14:00` |
 | `APPOINTMENT_DURATION_MINUTES` | Slot duration, default 30 |
+| `VAIDYA_INTERNAL_WEBHOOK_SECRET` | Required for signed internal calls to `/webhook`; generate a unique random secret |
+| `ALLOW_UNAUTHENTICATED_WEBHOOK` | Set to `false` in production; the unsigned bypass is ignored in production |
 | `GOOGLE_CALENDAR_ID` | Calendar ID shared with the service account |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Production service-account JSON stored as a secret |
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | Required only when enabling Meta WhatsApp |
@@ -59,7 +65,7 @@ Use Vercel or a Node web service. If using Render:
 - Start command: `npm run start -- -p $PORT`
 - Set `NEXT_PUBLIC_BACKEND_URL` to the public backend URL.
 
-After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend. The browser chat endpoint intentionally remains public, so put a WAF or API gateway in front of it for production traffic and use Redis via `RATE_LIMIT_STORAGE_URI` when running multiple backend workers; the built-in IP limit is a baseline, not bot protection.
+After the frontend is deployed, set `FRONTEND_ORIGINS` on the backend to the exact frontend origin, then restart the backend. The internal `/webhook` endpoint is authenticated with a timestamped HMAC in production and must not be called directly from browser code. The static chat page therefore needs a separate public-chat endpoint with server-verified bot protection (such as Turnstile), quotas, and a flow that cannot bypass explicit booking confirmation before being enabled for production. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
 
 ## Smoke tests
 
