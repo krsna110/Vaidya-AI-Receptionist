@@ -52,6 +52,28 @@ class WhatsAppAppSmokeTests(unittest.IsolatedAsyncioTestCase):
         _finish_whatsapp_message(message_id, "processed")
         self.assertFalse(_claim_whatsapp_message(message_id))
 
+    async def test_whatsapp_message_is_durably_queued(self):
+        message_id = "ci-durable-queue-regression-message"
+        message = {
+            "id": message_id,
+            "from": "919876543210",
+            "type": "text",
+            "text": {"body": "hello"},
+        }
+        self.assertTrue(_claim_whatsapp_message(message_id, message))
+        self.assertFalse(_claim_whatsapp_message(message_id, message))
+        import database
+        import models
+        db = database.SessionLocal()
+        try:
+            row = db.query(models.ProcessedWebhookMessage).filter_by(message_id=message_id).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.status, "pending")
+            self.assertIn("hello", row.payload)
+        finally:
+            db.close()
+        _finish_whatsapp_message(message_id, "processed")
+
     async def test_webhook_accepts_valid_signature(self):
         body = b'{"object":"whatsapp_business_account","entry":[]}'
         signature = "sha256=" + hmac.new(
