@@ -12,7 +12,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, inspect
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 from pydantic import BaseModel, model_validator
 
@@ -331,10 +332,29 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         reason=reason,
     )
     db.add(appointment)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent request may have won the same slot after our availability check.
+        db.rollback()
+        same_booking = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.patient_id == patient.id,
+                models.Appointment.date == appt_date,
+                models.Appointment.time == appt_time,
+                models.Appointment.reason == reason,
+            )
+            .first()
+        )
+        if same_booking:
+            return same_booking.id
+        logger.info("Appointment slot was claimed by a concurrent booking")
+        return None
     db.refresh(appointment)
     logger.info(
-        f"Created appointment | id={appointment.id} | patient_id={patient.id} | date={appt_date} | time={appt_time}"
+        "Created appointment | id=%s | patient_id=%s | date=%s | time=%s",
+        appointment.id, patient.id, appt_date, appt_time,
     )
     return appointment.id
 
@@ -393,6 +413,27 @@ class StateResetRequest(BaseModel):
     user_id: str
 
 # ---------- Create database tables ----------
+def cleanup_duplicate_confirmed_slots() -> None:
+    """Keep the oldest confirmed booking before adding the unique slot index."""
+    if not inspect(engine).has_table("appointments"):
+        return
+    is_confirmed = "1" if engine.dialect.name == "sqlite" else "TRUE"
+    not_confirmed = "0" if engine.dialect.name == "sqlite" else "FALSE"
+    with engine.begin() as connection:
+        connection.execute(text(f"""
+            UPDATE appointments
+            SET is_confirmed = {not_confirmed}
+            WHERE is_confirmed = {is_confirmed}
+              AND id NOT IN (
+                  SELECT MIN(id)
+                  FROM appointments
+                  WHERE is_confirmed = {is_confirmed}
+                  GROUP BY date, time
+              )
+        """))
+
+
+cleanup_duplicate_confirmed_slots()
 Base.metadata.create_all(bind=engine)
 
 
