@@ -388,7 +388,9 @@ Base.metadata.create_all(bind=engine)
 
 
 def ensure_sqlite_schema_upgrades() -> None:
-    """Apply lightweight SQLite column upgrades for existing local DBs."""
+    """Apply lightweight legacy column upgrades only to SQLite databases."""
+    if engine.dialect.name != "sqlite":
+        return
     appointment_required_columns = {
         "date": "VARCHAR",
         "time": "VARCHAR",
