@@ -1,7 +1,7 @@
 """Regression tests for authentication and webhook access controls."""
 import os
 import unittest
-from urllib.parse import urlencode
+import uuid
 
 import httpx
 
@@ -12,6 +12,7 @@ import auth
 import database
 import models
 from whatsapp_app import app
+from whatsapp_routes import _claim_webhook_message, _finish_webhook_message
 
 
 class AuthHelperTests(unittest.TestCase):
@@ -37,6 +38,21 @@ class AuthEndpointTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.client.aclose()
+
+
+    async def test_whatsapp_message_idempotency(self):
+        message_id = "test-message-" + uuid.uuid4().hex
+        self.assertTrue(_claim_webhook_message(message_id))
+        self.assertFalse(_claim_webhook_message(message_id))
+        _finish_webhook_message(message_id, "processed")
+        self.assertFalse(_claim_webhook_message(message_id))
+
+    async def test_failed_whatsapp_message_can_be_retried(self):
+        message_id = "test-retry-" + uuid.uuid4().hex
+        self.assertTrue(_claim_webhook_message(message_id))
+        _finish_webhook_message(message_id, "failed", "test_error")
+        self.assertTrue(_claim_webhook_message(message_id))
+        _finish_webhook_message(message_id, "processed")
 
     async def test_webhook_rejects_unauthenticated_request(self):
         response = await self.client.post(
