@@ -15,6 +15,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
@@ -217,13 +218,13 @@ CLINIC CONTEXT:
 
         if self.groq_client and self.groq_api_key:
             try:
-                logger.info("Using Groq (llama-3.3-70b-versatile) for response generation...")
+                logger.info("Using Groq (%s) for response generation...", GROQ_MODEL)
                 chat_completion = self.groq_client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": self.system_prompt},
                         {"role": "user", "content": full_prompt},
                     ],
-                    model="llama-3.3-70b-versatile",
+                    model=GROQ_MODEL,
                     response_format={"type": "json_object"},
                 )
                 json_response = json.loads(chat_completion.choices[0].message.content)
