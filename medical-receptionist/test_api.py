@@ -16,12 +16,41 @@ from main import (
     normalize_phone,
     parse_booking_datetime,
     create_appointment_from_booking_data,
+    get_recent_conversation_history,
 )
 from database import SessionLocal
 import models
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_conversation_history_uses_latest_six_messages_in_chronological_order(self):
+        db = SessionLocal()
+        session_id = "history-regression-test"
+        try:
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            base_time = __import__("datetime").datetime(2098, 1, 1, 9, 0, 0)
+            for index in range(8):
+                db.add(models.Conversation(
+                    session_id=session_id,
+                    timestamp=base_time + __import__("datetime").timedelta(minutes=index),
+                    sender_type="USER" if index % 2 == 0 else "AI",
+                    speaker="patient" if index % 2 == 0 else "receptionist",
+                    message=f"message-{index}",
+                ))
+            db.commit()
+            history = get_recent_conversation_history(db, session_id, limit=6)
+            self.assertEqual([item["content"] for item in history], [
+                "message-2", "message-3", "message-4",
+                "message-5", "message-6", "message-7",
+            ])
+            self.assertEqual([item["role"] for item in history], [
+                "user", "ai", "user", "ai", "user", "ai",
+            ])
+        finally:
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            db.commit()
+            db.close()
+
     def test_phone_normalization(self):
         self.assertEqual(normalize_phone("+91 98765-43210"), "+919876543210")
         self.assertEqual(normalize_phone(""), "")
