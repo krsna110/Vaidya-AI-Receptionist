@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import logging
 import os
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 import httpx
@@ -18,6 +19,10 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from google import genai
 from google.genai import types
+from sqlalchemy.exc import IntegrityError
+
+import database
+import models
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["WhatsApp"])
@@ -159,6 +164,65 @@ async def _send_text(to: str, text: str) -> None:
             raise HTTPException(status_code=502, detail="Could not send a WhatsApp reply.")
 
 
+def _claim_webhook_message(message_id: str) -> bool:
+    """Claim a provider message ID; skip completed or recently claimed duplicates."""
+    db = database.SessionLocal()
+    now = datetime.utcnow()
+    try:
+        event = db.query(models.WebhookEvent).filter(
+            models.WebhookEvent.message_id == message_id
+        ).first()
+        if event:
+            if event.status == "processed":
+                return False
+            if (
+                event.status == "processing"
+                and event.updated_at
+                and now - event.updated_at < timedelta(minutes=5)
+            ):
+                return False
+            event.status = "processing"
+            event.attempts = (event.attempts or 0) + 1
+            event.updated_at = now
+            event.last_error = None
+        else:
+            event = models.WebhookEvent(
+                message_id=message_id,
+                status="processing",
+                attempts=1,
+                received_at=now,
+                updated_at=now,
+            )
+            db.add(event)
+        try:
+            db.commit()
+            return True
+        except IntegrityError:
+            db.rollback()
+            # Another worker claimed this unique message ID first.
+            return False
+    finally:
+        db.close()
+
+
+def _finish_webhook_message(message_id: str, status_value: str, error_code: str | None = None) -> None:
+    db = database.SessionLocal()
+    try:
+        event = db.query(models.WebhookEvent).filter(
+            models.WebhookEvent.message_id == message_id
+        ).first()
+        if event:
+            event.status = status_value
+            event.updated_at = datetime.utcnow()
+            event.last_error = error_code
+            db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Could not update WhatsApp idempotency record")
+    finally:
+        db.close()
+
+
 async def _forward_to_existing_receptionist(user_id: str, message: str) -> str:
     """Reuse the existing text webhook; this preserves booking and Gemini/Groq fallback."""
     payload = {"user_id": user_id, "session_id": user_id, "message": message[:500]}
@@ -235,6 +299,9 @@ async def receive_whatsapp_webhook(request: Request):
                 sender = str(message.get("from") or "").strip()
                 if not sender:
                     continue
+                message_id = str(message.get("id") or "").strip()
+                if message_id and not _claim_webhook_message(message_id):
+                    continue
                 message_type = message.get("type")
                 try:
                     if message_type == "text":
@@ -280,7 +347,11 @@ async def receive_whatsapp_webhook(request: Request):
                             sender,
                             "I can process text messages, voice notes, and images. Please send one of those formats.",
                         )
+                    if message_id:
+                        _finish_webhook_message(message_id, "processed")
                 except HTTPException as exc:
+                    if message_id:
+                        _finish_webhook_message(message_id, "failed", "http_error")
                     logger.warning("WhatsApp message processing failed: %s", exc.detail)
                     try:
                         await _send_text(
@@ -290,6 +361,8 @@ async def receive_whatsapp_webhook(request: Request):
                     except Exception:
                         logger.exception("Could not send WhatsApp error reply")
                 except Exception:
+                    if message_id:
+                        _finish_webhook_message(message_id, "failed", "processing_error")
                     logger.exception("Unexpected WhatsApp message processing error")
                     try:
                         await _send_text(sender, "Sorry, something went wrong. Please try again shortly.")
