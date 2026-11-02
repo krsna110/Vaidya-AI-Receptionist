@@ -432,8 +432,9 @@ def cleanup_duplicate_confirmed_slots() -> None:
         """))
 
 
-cleanup_duplicate_confirmed_slots()
-Base.metadata.create_all(bind=engine)
+if APP_ENV != "production":
+    cleanup_duplicate_confirmed_slots()
+    Base.metadata.create_all(bind=engine)
 
 
 def ensure_sqlite_schema_upgrades() -> None:
