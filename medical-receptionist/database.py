@@ -1,32 +1,39 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from this project directory before config is read.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Database URL — use absolute path for SQLite to avoid CWD issues
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}",
 ) or f"sqlite:///{os.path.join(BASE_DIR, 'sql_app.db')}"
 
-# Create the SQLAlchemy engine
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+# Normalize common managed-Postgres URLs to the explicitly installed psycopg 3 driver.
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "postgres://", "postgresql+psycopg://", 1
+    )
+elif SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
 
-# Create a SessionLocal class
+if os.getenv("APP_ENV", "development").strip().lower() == "production" and not SQLALCHEMY_DATABASE_URL.startswith("postgresql+psycopg://"):
+    raise RuntimeError("Production requires DATABASE_URL for a managed PostgreSQL database.")
+
+engine_options = {"pool_pre_ping": True}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine_options["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_options)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Create a declarative base class
 Base = declarative_base()
 
 
-# Dependency to get the database session
 def get_db():
     db = SessionLocal()
     try:

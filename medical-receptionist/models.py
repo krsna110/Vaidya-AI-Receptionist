@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Index, text
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
@@ -17,6 +17,16 @@ class Patient(Base):
 
 class Appointment(Base):
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index(
+            "uq_active_appointment_slot",
+            "date",
+            "time",
+            unique=True,
+            sqlite_where=text("is_confirmed = 1"),
+            postgresql_where=text("is_confirmed = true"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"))
@@ -58,3 +68,15 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.now)
+
+class WebhookEvent(Base):
+    """Minimal durable idempotency record for provider webhook message IDs."""
+    __tablename__ = "webhook_events"
+
+    message_id = Column(String, primary_key=True)
+    status = Column(String, nullable=False, default="queued", index=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    payload_json = Column(Text, nullable=True)
+    received_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    last_error = Column(String, nullable=True)

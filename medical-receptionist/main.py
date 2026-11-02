@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import re
+import hmac
 from datetime import datetime, timedelta, date
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
@@ -11,7 +12,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, inspect
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 from pydantic import BaseModel, model_validator
 
@@ -25,7 +27,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY")
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+WEBHOOK_SHARED_SECRET = os.getenv("WEBHOOK_SHARED_SECRET", "")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not set")
 if not GROQ_API_KEY:
@@ -38,7 +42,7 @@ import models
 import auth
 from agent import Agent
 from state import StateManager
-from calendar_service import GoogleCalendarService
+from calendar_service import (GoogleCalendarService, CLINIC_TIMEZONE, CLINIC_OPEN_TIME, CLINIC_CLOSE_TIME, APPOINTMENT_DURATION_MINUTES)
 from scheduler import Scheduler
 from database import engine, Base
 
@@ -58,7 +62,10 @@ def normalize_phone(raw_phone: str) -> str:
     normalized = re.sub(r"[^\d+]", "", raw_phone)
     if normalized.count("+") > 1 or ("+" in normalized and not normalized.startswith("+")):
         normalized = normalized.replace("+", "")
-    return normalized
+    digits = re.sub(r"\D", "", normalized)
+    if not 8 <= len(digits) <= 15:
+        return ""
+    return ("+" if normalized.startswith("+") else "") + digits
 
 
 def normalize_booking_date(raw_date: str) -> str:
@@ -66,7 +73,7 @@ def normalize_booking_date(raw_date: str) -> str:
     value = (raw_date or "").strip().lower()
     if not value:
         return ""
-    today_obj = date.today()
+    today_obj = datetime.now(CLINIC_TIMEZONE).date()
     if value == "today":
         return today_obj.isoformat()
     if value in ("tomorrow", "tommorrow"):
@@ -80,20 +87,18 @@ def normalize_booking_date(raw_date: str) -> str:
 
 
 def normalize_booking_time(raw_time: str) -> str:
-    """Normalize common time phrases while keeping them readable."""
+    """Normalize recognized times to 24-hour HH:MM for consistent slot matching."""
     value = (raw_time or "").strip().lower().replace(".", "")
     if not value:
         return ""
     value = re.sub(r"\s+", " ", value)
-    match = re.fullmatch(r"(\d{1,2})(?::(\d{2}))?\s*([ap]m)?", value)
-    if not match:
-        return raw_time.strip()
-    hour = int(match.group(1))
-    minute = match.group(2) or "00"
-    meridiem = match.group(3)
-    if meridiem:
-        return f"{hour}:{minute} {meridiem.upper()}"
-    return f"{hour}:{minute}"
+    for pattern in ("%I:%M %p", "%I %p", "%H:%M", "%H"):
+        try:
+            parsed = datetime.strptime(value.upper(), pattern).time()
+            return parsed.strftime("%H:%M")
+        except ValueError:
+            continue
+    return raw_time.strip()
 
 
 def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
@@ -113,18 +118,14 @@ def parse_booking_datetime(iso_date: str, time_text: str) -> datetime | None:
 
 
 def is_confirmation_message(message: str) -> bool:
-    text_msg = (message or "").strip().lower()
-    confirmations = [
-        "yes",
-        "confirm",
-        "confirmed",
-        "yes confirm",
-        "yes confirm booking",
-        "book it",
-        "proceed",
-        "done",
-    ]
-    return any(token in text_msg for token in confirmations)
+    """Accept only explicit, whole-message confirmations."""
+    text_msg = re.sub(r"\s+", " ", (message or "").strip().lower())
+    text_msg = re.sub(r"[.!?]+$", "", text_msg).strip()
+    confirmations = {
+        "yes", "confirm", "confirmed", "yes confirm", "yes confirm booking",
+        "book it", "proceed", "done", "haan", "han", "ji haan", "haan confirm",
+    }
+    return text_msg in confirmations
 
 
 def extract_appointment_id(data: dict, message: str) -> int | None:
@@ -200,7 +201,7 @@ def is_booking_message(message: str, details: dict | None = None) -> bool:
 
 def missing_booking_fields(data: dict) -> list[str]:
     required = ["name", "phone", "date", "time", "reason"]
-    return [field for field in required if not (data.get(field) or "").strip()]
+    return [field for field in required if not str(data.get(field) or "").strip()]
 
 
 def booking_summary(data: dict) -> str:
@@ -245,7 +246,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Created patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Created patient record | patient_id=%s", patient.id)
         return
 
     updated = False
@@ -259,7 +260,7 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
         db.add(patient)
         db.commit()
         db.refresh(patient)
-        logger.info(f"Updated patient record | id={patient.id} | name={patient.name} | phone={patient.phone_number}")
+        logger.info("Updated patient record | patient_id=%s", patient.id)
 
 
 def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
@@ -272,6 +273,28 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
 
     if not (name and phone and appt_date and appt_time and reason):
         return None
+
+    appointment_start = parse_booking_datetime(appt_date, appt_time)
+    if appointment_start is None:
+        return None
+    appt_time = appointment_start.strftime("%H:%M")
+    now_local = datetime.now(CLINIC_TIMEZONE).replace(tzinfo=None)
+    appointment_end = appointment_start + timedelta(minutes=APPOINTMENT_DURATION_MINUTES)
+    if appointment_start <= now_local:
+        return None
+    if appointment_start.time() < CLINIC_OPEN_TIME or appointment_end.time() > CLINIC_CLOSE_TIME:
+        return None
+    if APP_ENV == "production" and (calendar_service is None or not calendar_service.service):
+        logger.warning("Booking rejected because the clinic calendar is unavailable")
+        return None
+    if calendar_service is not None and calendar_service.service:
+        requested_date = datetime.strptime(appt_date, "%Y-%m-%d").date()
+        available_slots = calendar_service.get_available_slots(
+            requested_date, APPOINTMENT_DURATION_MINUTES
+        )
+        if appt_time not in available_slots:
+            logger.info("Booking rejected because the requested slot is unavailable")
+            return None
 
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
     if patient is None and name:
@@ -286,6 +309,7 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
             models.Appointment.date == appt_date,
             models.Appointment.time == appt_time,
             models.Appointment.reason == reason,
+            models.Appointment.is_confirmed == True,
         )
         .first()
     )
@@ -303,15 +327,13 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         .first()
     )
     if slot_conflict:
-        logger.warning(
-            f"Slot conflict: date={appt_date} time={appt_time} already booked by appointment_id={slot_conflict.id}"
-        )
+        logger.info("Booking rejected because the requested slot is already occupied")
         return None
 
     appointment = models.Appointment(
         patient_id=patient.id,
-        start_time=datetime.utcnow(),
-        end_time=None,
+        start_time=appointment_start,
+        end_time=appointment_end,
         description=reason,
         is_confirmed=True,
         date=appt_date,
@@ -319,11 +341,27 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         reason=reason,
     )
     db.add(appointment)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent request may have won the same slot after our availability check.
+        db.rollback()
+        same_booking = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.patient_id == patient.id,
+                models.Appointment.date == appt_date,
+                models.Appointment.time == appt_time,
+                models.Appointment.reason == reason,
+            )
+            .first()
+        )
+        if same_booking:
+            return same_booking.id
+        logger.info("Appointment slot was claimed by a concurrent booking")
+        return None
     db.refresh(appointment)
-    logger.info(
-        f"Created appointment | id={appointment.id} | patient_id={patient.id} | date={appt_date} | time={appt_time}"
-    )
+    logger.info("Created appointment record | appointment_id=%s", appointment.id)
     return appointment.id
 
 
@@ -381,11 +419,35 @@ class StateResetRequest(BaseModel):
     user_id: str
 
 # ---------- Create database tables ----------
-Base.metadata.create_all(bind=engine)
+def cleanup_duplicate_confirmed_slots() -> None:
+    """Keep the oldest confirmed booking before adding the unique slot index."""
+    if not inspect(engine).has_table("appointments"):
+        return
+    is_confirmed = "1" if engine.dialect.name == "sqlite" else "TRUE"
+    not_confirmed = "0" if engine.dialect.name == "sqlite" else "FALSE"
+    with engine.begin() as connection:
+        connection.execute(text(f"""
+            UPDATE appointments
+            SET is_confirmed = {not_confirmed}
+            WHERE is_confirmed = {is_confirmed}
+              AND id NOT IN (
+                  SELECT MIN(id)
+                  FROM appointments
+                  WHERE is_confirmed = {is_confirmed}
+                  GROUP BY date, time
+              )
+        """))
+
+
+if APP_ENV != "production":
+    cleanup_duplicate_confirmed_slots()
+    Base.metadata.create_all(bind=engine)
 
 
 def ensure_sqlite_schema_upgrades() -> None:
-    """Apply lightweight SQLite column upgrades for existing local DBs."""
+    """Apply lightweight legacy column upgrades only to SQLite databases."""
+    if engine.dialect.name != "sqlite":
+        return
     appointment_required_columns = {
         "date": "VARCHAR",
         "time": "VARCHAR",
@@ -459,10 +521,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Webhook-Secret"],
 )
 
 # ---------- Initialize services ----------
@@ -481,6 +543,41 @@ scheduler_instance = Scheduler()
 
 @app.on_event("startup")
 async def startup_event():
+    if APP_ENV == "production":
+        required = {
+            "JWT_SECRET": JWT_SECRET,
+            "ADMIN_USERNAME": os.getenv("ADMIN_USERNAME"),
+            "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD"),
+            "WEBHOOK_SHARED_SECRET": WEBHOOK_SHARED_SECRET,
+            "FRONTEND_ORIGINS": os.getenv("FRONTEND_ORIGINS"),
+            "DATABASE_URL": os.getenv("DATABASE_URL"),
+        }
+        missing = [key for key, value in required.items() if not value]
+        if missing:
+            raise RuntimeError("Missing required production environment variables: " + ", ".join(missing))
+        if not database.SQLALCHEMY_DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg://")):
+            raise RuntimeError("Production requires a managed PostgreSQL DATABASE_URL.")
+
+    # Bootstrap the first admin only when explicit deployment credentials are set.
+    admin_username = os.getenv("ADMIN_USERNAME", "").strip()
+    admin_password = os.getenv("ADMIN_PASSWORD", "")
+    if admin_username and admin_password:
+        db = database.SessionLocal()
+        try:
+            existing_admin = db.query(models.User).filter(
+                models.User.username == admin_username
+            ).first()
+            if existing_admin is None:
+                db.add(models.User(
+                    username=admin_username,
+                    email=os.getenv("ADMIN_EMAIL", f"{admin_username}@localhost"),
+                    hashed_password=auth.hash_password(admin_password),
+                ))
+                db.commit()
+                logger.info("Bootstrapped initial admin account.")
+        finally:
+            db.close()
+
     scheduler_instance.start()
     logger.info("Scheduler started on startup.")
 
@@ -535,7 +632,7 @@ async def reset_user_state(
     current_user: auth.TokenData = Depends(auth.get_current_user),
 ):
     state_manager.reset_state(payload.user_id)
-    logger.info(f"State reset for user_id={payload.user_id}")
+    logger.info("Conversation state reset")
     return {"status": "ok", "user_id": payload.user_id, "state": "GREETING"}
 
 
@@ -560,29 +657,56 @@ async def get_slots(
         )
 
 
+# --- Rate Limiting ---
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 @app.post("/auth/token", response_model=auth.Token)
+@limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(database.get_db),
 ):
-    """Authenticates a user and returns an access token."""
-    if form_data.username != "admin" or form_data.password != "password":
+    """Authenticate against a database user with a stored password hash."""
+    user = db.query(models.User).filter(
+        models.User.username == form_data.username
+    ).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password or ""):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": form_data.username}, expires_delta=access_token_expires
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# --- Rate Limiting ---
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+async def require_webhook_access(request: Request):
+    """Allow authenticated dashboard users or trusted provider integrations."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    supplied_secret = request.headers.get("X-Webhook-Secret", "")
+    if WEBHOOK_SHARED_SECRET and supplied_secret and hmac.compare_digest(
+        supplied_secret, WEBHOOK_SHARED_SECRET
+    ):
+        return True
+    authorization = request.headers.get("Authorization", "")
+    if authorization.startswith("Bearer "):
+        try:
+            auth.verify_token(authorization[7:].strip(), credentials_exception)
+            return True
+        except HTTPException:
+            pass
+    raise credentials_exception
 
 
 @app.post("/webhook")
@@ -591,6 +715,7 @@ async def webhook_receiver(
     request: Request,
     payload: WebhookRequest,
     db: Session = Depends(database.get_db),
+    _authorized: bool = Depends(require_webhook_access),
 ):
     """Receives incoming webhook events (e.g., from a messaging platform)."""
     user_id = payload.user_id
@@ -602,7 +727,7 @@ async def webhook_receiver(
     conversation_state = state_manager.get_state(user_id)
     current_state = conversation_state.state
 
-    logger.info(f"Webhook received: session={user_id}")
+    logger.info("Webhook request received")
     logger.info("Webhook message received | state=%s | message_length=%s", current_state, len(message))
 
     # Fetch last 6 messages for conversation history
@@ -676,7 +801,7 @@ async def webhook_receiver(
             )
 
     except Exception as e:
-        logger.error(f"Agent error for user {user_id}: {e}", exc_info=True)
+        logger.error("Agent processing failed | error_type=%s", type(e).__name__)
         return {
             "response": "I'm experiencing technical difficulties. Please try again shortly.",
             "intent": "UNKNOWN",
@@ -698,7 +823,7 @@ async def webhook_receiver(
         db.refresh(conversation_entry_user)
         db.refresh(conversation_entry_ai)
     except Exception as e:
-        logger.error(f"Failed to save conversation history for user {user_id}: {e}", exc_info=True)
+        logger.error("Conversation history persistence failed | error_type=%s", type(e).__name__)
 
     # Extract patient data using the new agent method
     extracted_patient_data = await asyncio.to_thread(agent.extract_patient_data, message, conversation_history)
@@ -707,7 +832,7 @@ async def webhook_receiver(
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
     if isinstance(data, dict):
-        data = {**data, **deterministic_data, **extracted_patient_data}
+        data = {**data, **extracted_patient_data, **deterministic_data}
     else:
         data = {**deterministic_data, **extracted_patient_data}
 
@@ -737,7 +862,7 @@ async def webhook_receiver(
     try:
         upsert_patient_from_data(db, merged_data)
     except Exception as e:
-        logger.error(f"Patient upsert failed for user {user_id}: {e}", exc_info=True)
+        logger.error("Patient persistence failed | error_type=%s", type(e).__name__)
 
     # Update conversation state based on intent and current state
     new_state = current_state
@@ -751,14 +876,24 @@ async def webhook_receiver(
             if appt_id:
                 merged_data["appointment_id"] = appt_id
                 event_id = sync_appointment_to_google_calendar(db, appt_id)
-                if event_id:
+                if calendar_service is not None and calendar_service.service and not event_id:
+                    cancel_appointment_record(db, appt_id)
+                    new_state = "COLLECT_INFO"
+                    response_text = "I could not confirm the appointment with the clinic calendar. Please try again or contact the clinic."
+                elif APP_ENV == "production" and not event_id:
+                    cancel_appointment_record(db, appt_id)
+                    new_state = "COLLECT_INFO"
+                    response_text = "The clinic calendar is unavailable, so I could not confirm this appointment. Please try again later."
+                elif event_id:
                     merged_data["google_event_id"] = event_id
-                response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                    response_text = f"Your appointment is confirmed. Your appointment ID is {appt_id}."
+                else:
+                    response_text = f"Your appointment is saved locally (ID {appt_id}), but calendar sync is not configured. Please contact the clinic to verify the time."
             else:
                 new_state = "COLLECT_INFO"
-                response_text = "I could not create the appointment. Please choose a different date or time."
+                response_text = "I could not create the appointment. Please choose a different available date or time."
         except Exception as e:
-            logger.error(f"Appointment creation failed for user {user_id}: {e}", exc_info=True)
+            logger.error("Appointment creation failed | error_type=%s", type(e).__name__)
             new_state = "COLLECT_INFO"
             response_text = "I could not create the appointment right now. Please try again."
     elif intent == "BOOKING":
@@ -798,7 +933,7 @@ async def webhook_receiver(
 
     state_manager.set_state(user_id, new_state, merged_data)
 
-    logger.info(f"User {user_id} | new_state={new_state} | intent={intent}")
+    logger.info("Conversation state updated | state=%s | intent=%s", new_state, intent)
 
     return {
         "response": response_text,

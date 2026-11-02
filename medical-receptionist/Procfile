@@ -1,1 +1,1 @@
-web: VAIDYA_INTERNAL_BASE_URL=http://127.0.0.1:$PORT uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+web: alembic upgrade head && VAIDYA_INTERNAL_BASE_URL=http://127.0.0.1:$PORT uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT

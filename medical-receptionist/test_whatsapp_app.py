@@ -1,13 +1,17 @@
 import hashlib
 import hmac
+import json
 import os
 import unittest
+import uuid
 
 import httpx
 
-os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test-verify")
-os.environ.setdefault("WHATSAPP_APP_SECRET", "test-secret")
+os.environ["WHATSAPP_VERIFY_TOKEN"] = "test-verify"
+os.environ["WHATSAPP_APP_SECRET"] = "test-secret"
 
+import database
+import models
 from whatsapp_app import app
 
 
@@ -44,6 +48,49 @@ class WhatsAppAppSmokeTests(unittest.IsolatedAsyncioTestCase):
             json={"object": "whatsapp_business_account", "entry": []},
         )
         self.assertEqual(response.status_code, 401)
+
+    async def test_signed_webhook_enqueues_and_deduplicates_message(self):
+        message_id = "wamid-test-" + uuid.uuid4().hex
+        body = json.dumps({
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "id": message_id,
+                            "from": "15551234567",
+                            "type": "text",
+                            "text": {"body": "hello"},
+                        }]
+                    }
+                }]
+            }],
+        }, separators=(",", ":")).encode()
+        signature = "sha256=" + hmac.new(
+            b"test-secret", body, hashlib.sha256
+        ).hexdigest()
+        headers = {
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": signature,
+        }
+        try:
+            first = await self.client.post("/whatsapp/webhook", content=body, headers=headers)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(first.json()["queued"], 1)
+            second = await self.client.post("/whatsapp/webhook", content=body, headers=headers)
+            self.assertEqual(second.status_code, 200, second.text)
+            self.assertEqual(second.json()["duplicates"], 1)
+        finally:
+            db = database.SessionLocal()
+            try:
+                event = db.query(models.WebhookEvent).filter(
+                    models.WebhookEvent.message_id == message_id
+                ).first()
+                if event:
+                    db.delete(event)
+                    db.commit()
+            finally:
+                db.close()
 
     async def test_webhook_accepts_valid_signature(self):
         body = b'{"object":"whatsapp_business_account","entry":[]}'

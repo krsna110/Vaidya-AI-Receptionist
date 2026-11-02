@@ -5,9 +5,11 @@ on:
     branches:
       - main
       - feat/whatsapp-voice-image
+      - fix/production-readiness
   pull_request:
     branches:
       - main
+      - feat/whatsapp-voice-image
 
 jobs:
   unit-tests:
@@ -26,5 +28,7 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Compile Python modules
         run: python -m compileall -q .
+      - name: Validate fresh database migration
+        run: alembic upgrade head
       - name: Run backend and WhatsApp tests
-        run: python -m unittest -v test_whatsapp_media test_whatsapp_app
+        run: python -m unittest -v test_whatsapp_media test_whatsapp_app test_auth_security test_booking_logic test_api test_whatsapp_queue
