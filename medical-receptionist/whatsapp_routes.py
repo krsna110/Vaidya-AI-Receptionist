@@ -270,6 +270,33 @@ def _claim_next_whatsapp_message() -> tuple[str, dict, int] | None:
             db.commit()
             _last_queue_cleanup = loop_time
 
+        stale_cutoff = now - timedelta(minutes=5)
+        db.query(models.ProcessedWebhookMessage).filter(
+            models.ProcessedWebhookMessage.provider == "meta_whatsapp",
+            models.ProcessedWebhookMessage.status == "processing",
+            models.ProcessedWebhookMessage.updated_at < stale_cutoff,
+            models.ProcessedWebhookMessage.attempts < MAX_QUEUE_ATTEMPTS,
+        ).update(
+            {
+                models.ProcessedWebhookMessage.status: "pending",
+                models.ProcessedWebhookMessage.updated_at: now,
+            },
+            synchronize_session=False,
+        )
+        db.query(models.ProcessedWebhookMessage).filter(
+            models.ProcessedWebhookMessage.provider == "meta_whatsapp",
+            models.ProcessedWebhookMessage.status == "processing",
+            models.ProcessedWebhookMessage.updated_at < stale_cutoff,
+            models.ProcessedWebhookMessage.attempts >= MAX_QUEUE_ATTEMPTS,
+        ).update(
+            {
+                models.ProcessedWebhookMessage.status: "failed",
+                models.ProcessedWebhookMessage.updated_at: now,
+            },
+            synchronize_session=False,
+        )
+        db.commit()
+
         record = (
             db.query(models.ProcessedWebhookMessage)
             .filter_by(status="pending", provider="meta_whatsapp")
