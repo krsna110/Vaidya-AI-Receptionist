@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: medical-receptionist
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: ENVIRONMENT
@@ -56,22 +56,4 @@ services:
       - key: GOOGLE_CALENDAR_ID
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: WHATSAPP_ACCESS_TOKEN
-        sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
-        sync: false
-      - key: WHATSAPP_VERIFY_TOKEN
-        sync: false
-      - key: WHATSAPP_APP_SECRET
-        sync: false
-
-  - type: web
-    name: vaidyai-web
-    runtime: node
-    rootDir: vaidyai-web
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start -- -p $PORT
-    envVars:
-      - key: NEXT_PUBLIC_BACKEND_URL
         sync: false
