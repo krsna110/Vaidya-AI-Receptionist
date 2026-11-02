@@ -5,8 +5,8 @@ from urllib.parse import urlencode
 
 import httpx
 
-os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test-verify")
-os.environ.setdefault("WHATSAPP_APP_SECRET", "test-secret")
+os.environ["WHATSAPP_VERIFY_TOKEN"] = "test-verify"
+os.environ["WHATSAPP_APP_SECRET"] = "test-secret"
 
 import auth
 import database
