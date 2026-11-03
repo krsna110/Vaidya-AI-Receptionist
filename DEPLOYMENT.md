@@ -64,7 +64,7 @@ The browser chat uses the rate-limited `POST /chat` route and verifies Cloudflar
 
 ## Smoke tests
 
-1. `GET https://<backend-host>/health` should return JSON with `status: ok` for liveness. `GET https://<backend-host>/ready` should return `status: ready` only when the database and Google Calendar are configured and reachable.
+1. `GET https://<backend-host>/health` should return JSON with `status: ok` for liveness. `GET https://<backend-host>/ready` should return `status: ready` only when the database responds and the Google Calendar client is configured.
 2. Confirm the frontend can reach the backend from its configured origin.
 3. Test admin login with the environment-bootstrapped account and verify protected patient/appointment endpoints reject requests without a bearer token.
 4. Test booking, Calendar failure handling, admin cancellation, and duplicate booking requests in a staging calendar. Public chat must direct existing-booking cancellation/rescheduling to clinic staff until patient identity verification is implemented.
