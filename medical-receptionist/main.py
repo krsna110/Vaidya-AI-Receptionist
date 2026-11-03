@@ -108,6 +108,15 @@ def get_recent_conversation_history(db: Session, user_id: str, limit: int = 6) -
     ]
 
 
+def parse_conversation_state_data(raw_data) -> dict:
+    """Decode persisted conversation JSON safely and reject malformed shapes."""
+    try:
+        data = json.loads(raw_data or "{}") if isinstance(raw_data, (str, bytes)) else raw_data
+    except (TypeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def verify_internal_webhook_request(request: Request, raw_body: bytes) -> None:
     """Require a timestamped HMAC for production calls into the booking/AI pipeline."""
     environment = os.getenv("ENVIRONMENT", "development").strip().lower()
@@ -898,10 +907,14 @@ async def webhook_receiver(
             "session_id": user_id,
         }
 
-    name_intro_match = re.search(r"\bmy name is\s+([a-z][a-z ]{0,40})", message, re.IGNORECASE)
-    if name_intro_match:
+    name_intro_match = re.search(r"\\bmy name is\\s+([a-z][a-z ]{0,40})", message, re.IGNORECASE)
+    # During an active booking, let the normal extraction/collection pipeline
+    # handle this message so it cannot interrupt the booking state machine.
+    if name_intro_match and current_state not in {"COLLECT_INFO", "SUGGEST_SLOT", "CONFIRM", "BOOKING"}:
         extracted_name = name_intro_match.group(1).strip().title()
-        state_manager.set_state(user_id, current_state, {**conversation_state.data, "name": extracted_name})
+        existing_data = parse_conversation_state_data(conversation_state.data)
+        existing_data["name"] = extracted_name
+        state_manager.set_state(user_id, current_state, existing_data)
         return {
             "response": f"Nice to meet you, {extracted_name}. How can I help you today?",
             "intent": "GREETING",
@@ -913,7 +926,7 @@ async def webhook_receiver(
 
     # Fast path for simple memory lookup used in conversation-history checks.
     if message.lower() in {"what is my name?", "what's my name?", "what is my name"}:
-        known_name = (conversation_state.data or {}).get("name")
+        known_name = parse_conversation_state_data(conversation_state.data).get("name")
         for item in reversed(conversation_history):
             match = re.search(r"\bmy name is\s+([a-z][a-z ]{0,40})", item.get("content", ""), re.IGNORECASE)
             if match:
@@ -987,12 +1000,7 @@ async def webhook_receiver(
         intent = "BOOKING"
 
     # Merge with existing state data so multi-turn collection is preserved.
-    try:
-        existing_data = json.loads(conversation_state.data or "{}")
-        if not isinstance(existing_data, dict):
-            existing_data = {}
-    except Exception:
-        existing_data = {}
+    existing_data = parse_conversation_state_data(conversation_state.data)
     merged_data = {**existing_data, **(data if isinstance(data, dict) else {})}
 
     # Apply normalizations to merged data
