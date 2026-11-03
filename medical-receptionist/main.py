@@ -511,6 +511,28 @@ def sync_appointment_to_google_calendar(db: Session, appointment_id: int) -> str
     if appointment.patient is None:
         return None
 
+    # Recover a Calendar event created before a process crash but whose event ID
+    # was not committed locally. Do this BEFORE checking slot availability,
+    # because that orphaned event correctly makes the slot appear occupied.
+    try:
+        recovered_event_id = calendar_service.find_appointment_event(str(appointment.id))
+    except Exception:
+        logger.exception(
+            "Could not recover Calendar event | appointment_id=%s",
+            appointment.id,
+        )
+        return None
+    if recovered_event_id:
+        appointment.google_event_id = recovered_event_id
+        db.add(appointment)
+        db.commit()
+        db.refresh(appointment)
+        logger.info(
+            "Recovered Google Calendar event | appointment_id=%s",
+            appointment.id,
+        )
+        return recovered_event_id
+
     start_dt = parse_booking_datetime(appointment.date, appointment.time)
     if start_dt is None:
         logger.warning(
