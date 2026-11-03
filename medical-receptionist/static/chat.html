@@ -149,6 +149,7 @@
                     </button>
                 </div>
             </div>
+            <div id="turnstile-container" class="flex justify-center py-2"></div>
             <div class="mt-4 md:hidden h-16"></div>
         </div>
     </main>
@@ -236,16 +237,56 @@
             if (wrapper) wrapper.remove();
         }
 
-        async function callWebhook(message) {
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId, message })
-            });
-            if (!response.ok) {
-                throw new Error(`Webhook failed: ${response.statusText}`);
+        let turnstileToken = null;
+        let turnstileWidgetId = null;
+
+        async function initializeTurnstile() {
+            try {
+                const configResponse = await fetch('/public-config');
+                if (!configResponse.ok) return;
+                const config = await configResponse.json();
+                if (!config.turnstile_site_key) return;
+
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+
+                turnstileWidgetId = window.turnstile.render('#turnstile-container', {
+                    sitekey: config.turnstile_site_key,
+                    callback: (token) => { turnstileToken = token; },
+                    'expired-callback': () => { turnstileToken = null; },
+                    'error-callback': () => { turnstileToken = null; }
+                });
+            } catch (error) {
+                console.error('Security verification could not be initialized.', error);
             }
-            return response.json();
+        }
+
+        async function callWebhook(message) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (turnstileToken) headers['X-Turnstile-Token'] = turnstileToken;
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ user_id: userId, message })
+                });
+                if (!response.ok) {
+                    throw new Error(`Chat request failed: ${response.status}`);
+                }
+                return await response.json();
+            } finally {
+                if (turnstileWidgetId !== null && window.turnstile) {
+                    turnstileToken = null;
+                    window.turnstile.reset(turnstileWidgetId);
+                }
+            }
         }
 
         async function sendMessage() {
@@ -276,6 +317,7 @@
             }
         });
 
+        initializeTurnstile();
         appendMessage('Hello! Welcome to Vaidya AI reception. How can I assist you today?', 'ai');
     </script>
 </body>
