@@ -7,8 +7,9 @@ on:
       - feat/whatsapp-voice-image
       - fix/production-readiness-backlog
       - fix/issue-5-internal-webhook-auth
+      - chore/local-development-readiness
       - fix/whatsapp-render-entrypoint
-      - fix/whatsapp-render-entrypoint
+      - chore/local-development-readiness
       - test/booking-cancellation-api
   pull_request:
     branches:
