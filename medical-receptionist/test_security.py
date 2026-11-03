@@ -102,6 +102,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         def migrated_database():
             db = Mock()
             db.execute.return_value.first.return_value = ("head",)
+            db.query.return_value.count.return_value = 1
             yield db
 
         app.dependency_overrides[main_module.database.get_db] = migrated_database
@@ -163,6 +164,32 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
                 "TURNSTILE_SECRET_KEY": "test-secret-key",
                 "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
                 "GEMINI_API_KEY": "",
+                "GROQ_API_KEY": "",
+            }):
+                response = await self.client.get("/ready")
+                self.assertEqual(response.status_code, 503)
+        finally:
+            app.dependency_overrides.pop(main_module.database.get_db, None)
+            main_module.calendar_service = original_calendar
+
+    async def test_production_readiness_fails_without_admin_account(self):
+        original_calendar = main_module.calendar_service
+
+        def database_without_admin():
+            db = Mock()
+            db.execute.return_value.first.return_value = ("head",)
+            db.query.return_value.count.return_value = 0
+            yield db
+
+        app.dependency_overrides[main_module.database.get_db] = database_without_admin
+        main_module.calendar_service = Mock(service=Mock())
+        try:
+            with patch.dict(os.environ, {
+                "ENVIRONMENT": "production",
+                "TURNSTILE_SITE_KEY": "test-site-key",
+                "TURNSTILE_SECRET_KEY": "test-secret-key",
+                "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
+                "GEMINI_API_KEY": "test-gemini-key",
                 "GROQ_API_KEY": "",
             }):
                 response = await self.client.get("/ready")
