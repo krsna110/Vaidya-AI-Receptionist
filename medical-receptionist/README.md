@@ -92,11 +92,12 @@ Edit the `.env` file:
 ```
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 GROQ_API_KEY="YOUR_GROQ_API_KEY"
+-   **JWT_SECRET**: Generate a unique value with `python -c "import secrets; print(secrets.token_urlsafe(48))"` and paste the output into `.env`. Do not use the placeholder value.
 GROQ_MODEL="llama-3.3-70b-versatile"
 DATABASE_URL="sqlite:///./sql_app.db"
 GEMINI_MODEL="gemini-3.8-flash"
 GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
-JWT_SECRET="$(python -c \"import secrets; print(secrets.token_urlsafe(48))\")"
+JWT_SECRET="replace_with_generated_random_secret"
 ENVIRONMENT="development"
 VAIDYA_INTERNAL_WEBHOOK_SECRET=""
 ALLOW_UNAUTHENTICATED_WEBHOOK="true"
