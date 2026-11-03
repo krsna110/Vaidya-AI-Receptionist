@@ -24,6 +24,7 @@ class FakeEvents:
         self.last_query = None
         self.last_list_query = None
         self.last_deleted_event_id = None
+        self.last_insert_body = None
         self.operation = "list"
 
     def list(self, **kwargs):
@@ -38,11 +39,18 @@ class FakeEvents:
         self.last_query = kwargs
         return self
 
+    def insert(self, **kwargs):
+        self.operation = "insert"
+        self.last_insert_body = kwargs
+        return self
+
     def execute(self):
         if self.operation == "delete":
             if self.delete_error is not None:
                 raise self.delete_error
             return {}
+        if self.operation == "insert":
+            return {"id": "created-calendar-event"}
         return {"items": self.items}
 
 
@@ -139,6 +147,43 @@ class CalendarSlotTests(unittest.TestCase):
             service.service.events_api.last_query["privateExtendedProperty"],
             "vaidya_appointment_id=appointment-123",
         )
+
+    def test_direct_calendar_booking_rejects_a_busy_slot_before_insert(self):
+        clinic_tz = ZoneInfo("Asia/Kolkata")
+        slot_date = date(2098, 12, 30)
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([{
+            "start": {"dateTime": f"{slot_date.isoformat()}T10:00:00+05:30"},
+            "end": {"dateTime": f"{slot_date.isoformat()}T10:30:00+05:30"},
+        }])
+
+        result = service.book_appointment(
+            patient_name="Test Patient",
+            phone="+919876543210",
+            start_datetime=datetime.combine(slot_date, datetime.strptime("10:00", "%H:%M").time(), tzinfo=clinic_tz),
+            reason="busy slot regression",
+        )
+
+        self.assertIsNone(result)
+        self.assertIsNone(service.service.events_api.last_insert_body)
+
+    def test_direct_calendar_booking_rejects_outside_clinic_hours(self):
+        clinic_tz = ZoneInfo("Asia/Kolkata")
+        slot_date = date(2098, 12, 30)
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+
+        result = service.book_appointment(
+            patient_name="Test Patient",
+            phone="+919876543210",
+            start_datetime=datetime.combine(slot_date, datetime.strptime("08:30", "%H:%M").time(), tzinfo=clinic_tz),
+            reason="outside hours regression",
+        )
+
+        self.assertIsNone(result)
+        self.assertIsNone(service.service.events_api.last_insert_body)
 
     def test_find_appointment_event_recovers_orphaned_calendar_event(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
