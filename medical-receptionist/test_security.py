@@ -188,6 +188,52 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             db.commit()
             db.close()
 
+    async def test_pending_booking_cancels_orphaned_calendar_event_by_reference(self):
+        db = SessionLocal()
+        phone = "+919876543226"
+        try:
+            patient = models.Patient(name="Orphan Event Cancel Patient", phone_number=phone)
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            appointment = models.Appointment(
+                patient_id=patient.id,
+                date="2099-02-03",
+                time="12:00",
+                reason="orphan event cancellation",
+                description="orphan event cancellation",
+                is_confirmed=False,
+                booking_status="pending",
+                google_event_id=None,
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+            appointment_id = appointment.id
+        finally:
+            db.close()
+
+        original_calendar = main_module.calendar_service
+        calendar_mock = Mock()
+        calendar_mock.cancel_appointment_by_reference.return_value = True
+        main_module.calendar_service = calendar_mock
+        try:
+            token = create_access_token({"sub": "test-admin"})
+            response = await self.client.post(
+                f"/appointments/{appointment_id}/cancel",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "cancelled")
+            calendar_mock.cancel_appointment_by_reference.assert_called_once_with(str(appointment_id))
+        finally:
+            main_module.calendar_service = original_calendar
+            db = SessionLocal()
+            db.query(models.Appointment).filter_by(id=appointment_id).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+            db.close()
+
     async def test_patient_endpoints_require_authentication(self):
         response = await self.client.get("/patients")
         self.assertEqual(response.status_code, 401)
