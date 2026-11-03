@@ -99,6 +99,106 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "cancelled")
 
+    async def test_confirmation_with_incomplete_details_returns_to_collection(self):
+        session_id = "incomplete-confirmation-regression"
+        original_generate = main_module.agent.generate_response
+        original_extract = main_module.agent.extract_patient_data
+        original_limiter = main_module.limiter.enabled
+        main_module.state_manager.set_state(session_id, "CONFIRM", {
+            "name": "Incomplete Confirmation Patient",
+            "date": "2099-03-05",
+            "time": "11:00",
+            "reason": "incomplete booking regression",
+        })
+        main_module.agent.generate_response = Mock(return_value={
+            "intent": "BOOKING", "response": "model draft",
+            "data": {}, "confidence": 0.9, "language": "en",
+        })
+        main_module.agent.extract_patient_data = Mock(return_value={})
+        main_module.limiter.enabled = False
+        try:
+            response = await self.client.post(
+                "/chat", json={"session_id": session_id, "message": "yes"}
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("valid contact number", response.json()["response"])
+
+            state = main_module.state_manager.get_state(session_id)
+            self.assertEqual(state.state, "COLLECT_INFO")
+        finally:
+            main_module.agent.generate_response = original_generate
+            main_module.agent.extract_patient_data = original_extract
+            main_module.limiter.enabled = original_limiter
+            main_module.state_manager.reset_state(session_id)
+
+    async def test_cancelling_pending_booking_releases_slot_for_another_patient(self):
+        db = SessionLocal()
+        phone_one, phone_two = "+919876543241", "+919876543242"
+        slot_date, slot_time = "2099-03-06", "11:30"
+        appointment_id = None
+        try:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([phone_one, phone_two])
+            ).delete(synchronize_session=False)
+            db.commit()
+            patient = models.Patient(name="Slot Release Patient One", phone_number=phone_one)
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            appointment = models.Appointment(
+                patient_id=patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="slot release regression",
+                description="slot release regression",
+                is_confirmed=False,
+                booking_status="pending",
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+            appointment_id = appointment.id
+        finally:
+            db.close()
+
+        token = create_access_token({"sub": "test-admin"})
+        response = await self.client.post(
+            f"/appointments/{appointment_id}/cancel",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "cancelled")
+
+        db = SessionLocal()
+        try:
+            cancelled = db.query(models.Appointment).filter_by(id=appointment_id).one()
+            self.assertEqual(cancelled.booking_status, "cancelled")
+            self.assertFalse(cancelled.is_confirmed)
+
+            second_patient = models.Patient(name="Slot Release Patient Two", phone_number=phone_two)
+            db.add(second_patient)
+            db.commit()
+            db.refresh(second_patient)
+            replacement_id = main_module.create_appointment_from_booking_data(db, {
+                "name": second_patient.name,
+                "phone": phone_two,
+                "date": slot_date,
+                "time": slot_time,
+                "reason": "replacement after cancellation",
+            })
+            self.assertIsNotNone(replacement_id)
+            replacement = db.query(models.Appointment).filter_by(id=replacement_id).one()
+            self.assertEqual(replacement.booking_status, "pending")
+            self.assertEqual(replacement.patient_id, second_patient.id)
+        finally:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([phone_one, phone_two])
+            ).delete(synchronize_session=False)
+            db.commit()
+            db.close()
+
     async def test_pending_appointment_without_calendar_event_can_be_cancelled(self):
         db = SessionLocal()
         phone = "+919876543221"
