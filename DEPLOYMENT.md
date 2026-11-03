@@ -58,7 +58,7 @@ Do not set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in production. Create a Googl
 
 The current UI files are `medical-receptionist/static/chat.html` and `medical-receptionist/static/admin.html`, served by FastAPI at `/chat` and `/admin`. The `vaidyai-web` directory currently contains HTML design prototypes only, so the Node deployment shown in older notes is not runnable. Do not deploy it as Next.js until a real app and `package.json` are added.
 
-The browser chat uses the rate-limited `POST /chat` route and verifies Cloudflare Turnstile tokens server-side in production. Set both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`; production chat fails closed if the secret is missing. Add gateway/WAF controls as another layer. The server-to-server `POST /webhook` route requires HMAC in production. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
+The browser chat uses the rate-limited `POST /chat` route and verifies Cloudflare Turnstile tokens server-side in production. Set both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`; production chat fails closed if the secret is missing. Add gateway/WAF controls as another layer. The server-to-server `POST /webhook` route requires HMAC in production. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection. The APScheduler jobs must run in exactly one process: for a multi-worker API deployment set `ENABLE_SCHEDULER=false` on API workers and run `python scheduler.py` as one separate process after migrations. Do not run a scheduler in every API worker.
 
 ## Smoke tests
 
