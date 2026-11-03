@@ -92,11 +92,12 @@ Edit the `.env` file:
 ```
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 GROQ_API_KEY="YOUR_GROQ_API_KEY"
+-   **JWT_SECRET**: Generate a unique value with `python -c "import secrets; print(secrets.token_urlsafe(48))"` and paste the output into `.env`. Do not use the placeholder value.
 GROQ_MODEL="llama-3.3-70b-versatile"
 DATABASE_URL="sqlite:///./sql_app.db"
 GEMINI_MODEL="gemini-3.8-flash"
 GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
-JWT_SECRET="a-long-random-secret"
+JWT_SECRET="replace_with_generated_random_secret"
 ENVIRONMENT="development"
 VAIDYA_INTERNAL_WEBHOOK_SECRET=""
 ALLOW_UNAUTHENTICATED_WEBHOOK="true"
@@ -122,17 +123,45 @@ FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 -   **Internal webhook**: In production, set a strong random `VAIDYA_INTERNAL_WEBHOOK_SECRET` and set `ALLOW_UNAUTHENTICATED_WEBHOOK=false`. The unsigned bypass is honored only outside production. Do not call the internal endpoint directly from browser code.
 -   **Public chat protection**: Configure Cloudflare Turnstile `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` before enabling production `/chat`. The site key is public and rendered in the browser; the secret key must remain server-side. Production `/chat` fails closed with HTTP 503 when the secret is missing and rejects missing/invalid challenge tokens. Local development does not require Turnstile.
 
-### 7. Run the FastAPI Server
+### 7. Validate Local Configuration
+
+Run the checker from the repository root or from inside `medical-receptionist/`:
+
+```bash
+python medical-receptionist/check_env.py
+```
+
+On Windows PowerShell, the same command works. The checker loads `medical-receptionist/.env` by its own file location and never prints secret values. It requires a JWT secret and at least one AI provider. Google Calendar, admin bootstrap, and WhatsApp are reported as optional local integrations.
+
+For real local appointment confirmation, configure Google Calendar OAuth:
+1. Enable the Google Calendar API in your Google Cloud project.
+2. Create an OAuth Client ID of type **Desktop app** and save the downloaded file as `medical-receptionist/client_secret.json`.
+3. Set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in `.env`.
+4. Start the app. Complete the browser authorization once; Google creates `token.json` beside `main.py`.
+5. Keep both JSON files private and out of Git.
+
+### 8. Run the FastAPI Server
 
 ```bash
 cd medical-receptionist
 alembic upgrade head
+```
+
+For the core receptionist, browser chat, and admin UI:
+
+```bash
 uvicorn main:app --reload
 ```
 
-This starts the core FastAPI application and its existing browser chat/admin UI. The optional WhatsApp adapter is not enabled by this command.
+To also register the Meta WhatsApp webhook routes and start the durable WhatsApp queue worker:
 
-The development server should be available at `http://127.0.0.1:8000`. For local use, run the command from the `medical-receptionist/` directory so the static files and `.env` are resolved correctly.
+```bash
+uvicorn whatsapp_app:app --reload
+```
+
+Use only one server command at a time on port 8000. WhatsApp credentials are optional for core local testing. To receive actual Meta webhook events on your machine, Meta must be able to reach your local server through a secure HTTPS development tunnel; that is a separate local integration step, not a production deployment.
+
+The development server should be available at `http://127.0.0.1:8000`. Run commands from the `medical-receptionist/` directory so static files, migrations, and `.env` resolve correctly.
 
 ### 8. Access the Chat UI
 

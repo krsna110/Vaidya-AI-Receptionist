@@ -8,7 +8,7 @@ on:
       - fix/production-readiness-backlog
       - fix/issue-5-internal-webhook-auth
       - fix/whatsapp-render-entrypoint
-      - fix/whatsapp-render-entrypoint
+      - chore/local-development-readiness
   pull_request:
     branches:
       - main
