@@ -673,8 +673,18 @@ class WebhookRequest(BaseModel):
 class StateResetRequest(BaseModel):
     user_id: str
 
-# ---------- Create database tables ----------
-Base.metadata.create_all(bind=engine)
+# ---------- Initialize development/test schema ----------
+def initialize_database_schema() -> bool:
+    """Create tables for local/test use; production schema is owned by Alembic."""
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    if environment in {"production", "prod"}:
+        logger.info("Skipping create_all in production; Alembic owns the database schema.")
+        return False
+    Base.metadata.create_all(bind=engine)
+    return True
+
+
+initialize_database_schema()
 
 
 def ensure_sqlite_schema_upgrades() -> None:
@@ -726,7 +736,8 @@ def ensure_sqlite_schema_upgrades() -> None:
                     conn.execute(text(f"ALTER TABLE conversations ADD COLUMN {col_name} {col_type}"))
                     logger.info(f"DB upgrade applied: added conversations.{col_name}")
     except Exception as e:
-        logger.error(f"Failed schema upgrade check: {e}", exc_info=True)
+        logger.error("Failed schema upgrade check; refusing to start with an unsafe SQLite schema.", exc_info=True)
+        raise RuntimeError("SQLite schema compatibility upgrade failed.") from e
 
 
 ensure_sqlite_schema_upgrades()
