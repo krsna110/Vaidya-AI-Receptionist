@@ -72,10 +72,45 @@ class BookingHelperTests(unittest.TestCase):
         self.assertFalse(is_confirmation_message("yesterday"))
         self.assertFalse(is_confirmation_message("yes, but I have a question"))
 
-    def test_date_normalization_rejects_no_value_as_a_valid_date_later(self):
-        self.assertEqual(normalize_booking_date("2026-11-03"), "2026-11-03")
-        self.assertEqual(normalize_booking_date("tomorrow"), normalize_booking_date("tomorrow"))
+    def test_date_normalization_uses_clinic_local_today_and_tomorrow(self):
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+
+        today = datetime.now(ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))).date()
+        self.assertEqual(normalize_booking_date(today.isoformat()), today.isoformat())
+        self.assertEqual(normalize_booking_date("today"), today.isoformat())
+        self.assertEqual(normalize_booking_date("tomorrow"), (today + timedelta(days=1)).isoformat())
         self.assertEqual(normalize_booking_date(""), "")
+
+    def test_empty_extractor_values_do_not_overwrite_known_booking_details(self):
+        from main import merge_non_empty_booking_data
+
+        deterministic = {
+            "name": "Rahul Sharma",
+            "phone": "9876543210",
+            "date": "2026-11-10",
+            "time": "10:30",
+            "reason": "dental checkup",
+        }
+        extractor = {
+            "name": None,
+            "phone": "",
+            "date": None,
+            "time": " ",
+            "reason": None,
+        }
+        merged = merge_non_empty_booking_data(deterministic, extractor)
+        self.assertEqual(merged, deterministic)
+
+    def test_non_empty_extractor_values_can_refine_booking_details(self):
+        from main import merge_non_empty_booking_data
+
+        merged = merge_non_empty_booking_data(
+            {"name": "Rahul", "phone": "9876543210"},
+            {"name": "Rahul Sharma", "phone": None},
+        )
+        self.assertEqual(merged["name"], "Rahul Sharma")
+        self.assertEqual(merged["phone"], "9876543210")
 
     def test_database_rejects_duplicate_confirmed_slots(self):
         db = SessionLocal()
