@@ -185,6 +185,104 @@ class BookingHelperTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_retry_reactivates_failed_reservation_when_slot_is_free(self):
+        db = SessionLocal()
+        phone = "+919876543223"
+        slot_date, slot_time = "2098-12-28", "13:00"
+        try:
+            patient = models.Patient(name="Failed Retry Patient", phone_number=phone)
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            failed = models.Appointment(
+                patient_id=patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="retry after calendar outage",
+                description="retry after calendar outage",
+                is_confirmed=False,
+                booking_status="failed",
+            )
+            db.add(failed)
+            db.commit()
+            db.refresh(failed)
+
+            retried_id = create_appointment_from_booking_data(db, {
+                "name": patient.name,
+                "phone": phone,
+                "date": slot_date,
+                "time": slot_time,
+                "reason": "retry after calendar outage",
+            })
+            self.assertEqual(retried_id, failed.id)
+            db.refresh(failed)
+            self.assertEqual(failed.booking_status, "pending")
+            self.assertFalse(failed.is_confirmed)
+        finally:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+            db.close()
+
+    def test_retry_cannot_reactivate_failed_reservation_over_another_patient(self):
+        db = SessionLocal()
+        slot_date, slot_time = "2098-12-27", "13:30"
+        patient_phone, other_phone = "+919876543224", "+919876543225"
+        try:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([patient_phone, other_phone])
+            ).delete(synchronize_session=False)
+            db.commit()
+            patient = models.Patient(name="Failed Retry Owner", phone_number=patient_phone)
+            other = models.Patient(name="New Slot Owner", phone_number=other_phone)
+            db.add_all([patient, other])
+            db.commit()
+            db.refresh(patient)
+            db.refresh(other)
+            failed = models.Appointment(
+                patient_id=patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="failed retry conflict",
+                description="failed retry conflict",
+                is_confirmed=False,
+                booking_status="failed",
+            )
+            active = models.Appointment(
+                patient_id=other.id,
+                date=slot_date,
+                time=slot_time,
+                reason="new patient reservation",
+                description="new patient reservation",
+                is_confirmed=False,
+                booking_status="pending",
+            )
+            db.add_all([failed, active])
+            db.commit()
+
+            retried_id = create_appointment_from_booking_data(db, {
+                "name": patient.name,
+                "phone": patient_phone,
+                "date": slot_date,
+                "time": slot_time,
+                "reason": "failed retry conflict",
+            })
+            self.assertIsNone(retried_id)
+            db.refresh(failed)
+            self.assertEqual(failed.booking_status, "failed")
+            self.assertEqual(
+                db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).count(),
+                2,
+            )
+        finally:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([patient_phone, other_phone])
+            ).delete(synchronize_session=False)
+            db.commit()
+            db.close()
+
     def test_pending_reservation_blocks_a_second_patient(self):
         db = SessionLocal()
         slot_date, slot_time = "2098-12-29", "12:00"
