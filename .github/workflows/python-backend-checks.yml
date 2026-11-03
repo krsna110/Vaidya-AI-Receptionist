@@ -9,6 +9,7 @@ on:
       - fix/issue-5-internal-webhook-auth
       - fix/whatsapp-render-entrypoint
       - fix/whatsapp-render-entrypoint
+      - test/booking-cancellation-api
   pull_request:
     branches:
       - main
