@@ -19,6 +19,7 @@ from main import (
     get_recent_conversation_history,
     parse_conversation_state_data,
     sync_appointment_to_google_calendar,
+    upsert_patient_from_data,
 )
 from database import SessionLocal
 import models
@@ -145,6 +146,66 @@ class BookingHelperTests(unittest.TestCase):
     def test_phone_normalization(self):
         self.assertEqual(normalize_phone("+91 98765-43210"), "+919876543210")
         self.assertEqual(normalize_phone(""), "")
+
+    def test_same_name_patients_are_kept_separate_by_phone_number(self):
+        db = SessionLocal()
+        phone_one, phone_two = "+919876543231", "+919876543232"
+        shared_name = "Same Name Regression Patient"
+        try:
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([phone_one, phone_two])
+            ).delete(synchronize_session=False)
+            db.commit()
+
+            upsert_patient_from_data(db, {"name": shared_name, "phone": phone_one})
+            upsert_patient_from_data(db, {"name": shared_name, "phone": phone_two})
+
+            patients = db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([phone_one, phone_two])
+            ).all()
+            self.assertEqual(len(patients), 2)
+            self.assertEqual({patient.phone_number for patient in patients}, {phone_one, phone_two})
+            self.assertEqual({patient.name for patient in patients}, {shared_name})
+        finally:
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([phone_one, phone_two])
+            ).delete(synchronize_session=False)
+            db.commit()
+            db.close()
+
+    def test_booking_does_not_attach_to_another_patient_with_same_name(self):
+        db = SessionLocal()
+        known_phone, unknown_phone = "+919876543233", "+919876543234"
+        slot_date, slot_time = "2098-12-26", "14:00"
+        try:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([known_phone, unknown_phone])
+            ).delete(synchronize_session=False)
+            db.commit()
+            db.add(models.Patient(name="Duplicate Name Patient", phone_number=known_phone))
+            db.commit()
+
+            appointment_id = create_appointment_from_booking_data(db, {
+                "name": "Duplicate Name Patient",
+                "phone": unknown_phone,
+                "date": slot_date,
+                "time": slot_time,
+                "reason": "identity isolation regression",
+            })
+
+            self.assertIsNone(appointment_id)
+            self.assertEqual(
+                db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).count(),
+                0,
+            )
+        finally:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(
+                models.Patient.phone_number.in_([known_phone, unknown_phone])
+            ).delete(synchronize_session=False)
+            db.commit()
+            db.close()
 
     def test_time_normalization_uses_canonical_24_hour_format(self):
         self.assertEqual(normalize_booking_time("10 AM"), "10:00")
