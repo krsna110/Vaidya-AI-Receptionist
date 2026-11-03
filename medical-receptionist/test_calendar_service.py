@@ -140,6 +140,26 @@ class CalendarSlotTests(unittest.TestCase):
             "vaidya_appointment_id=appointment-123",
         )
 
+    def test_find_appointment_event_recovers_orphaned_calendar_event(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([{"id": "orphan-event-id"}])
+
+        event_id = service.find_appointment_event("appointment-789")
+
+        self.assertEqual(event_id, "orphan-event-id")
+        self.assertEqual(
+            service.service.events_api.last_list_query["privateExtendedProperty"],
+            "vaidya_appointment_id=appointment-789",
+        )
+
+    def test_find_appointment_event_returns_none_when_no_event_exists(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+
+        self.assertIsNone(service.find_appointment_event("appointment-without-event"))
+
     def test_working_days_and_holidays_close_the_schedule(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
         service.calendar_id = "clinic-calendar@example.test"
