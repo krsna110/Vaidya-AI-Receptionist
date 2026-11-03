@@ -888,6 +888,19 @@ async def readiness_check(db: Session = Depends(database.get_db)):
     if calendar_service is None or getattr(calendar_service, "service", None) is None:
         raise HTTPException(status_code=503, detail="Google Calendar is unavailable.")
 
+    if environment in {"production", "prod"}:
+        required_security = (
+            "TURNSTILE_SITE_KEY",
+            "TURNSTILE_SECRET_KEY",
+            "VAIDYA_INTERNAL_WEBHOOK_SECRET",
+        )
+        missing_security = [key for key in required_security if not os.getenv(key, "").strip()]
+        if missing_security:
+            logger.error("Readiness security configuration incomplete | missing=%s", ",".join(missing_security))
+            raise HTTPException(status_code=503, detail="Production security configuration is incomplete.")
+        if not os.getenv("GEMINI_API_KEY", "").strip() and not os.getenv("GROQ_API_KEY", "").strip():
+            raise HTTPException(status_code=503, detail="No AI provider is configured.")
+
     return {"status": "ready", "database": "ok", "calendar": "configured"}
 
 
