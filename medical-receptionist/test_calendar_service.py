@@ -97,6 +97,15 @@ class CalendarSlotTests(unittest.TestCase):
 
         self.assertTrue(service.cancel_appointment_by_reference("appointment-without-event"))
 
+    def test_past_date_returns_no_available_slots_without_calendar_query(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+        yesterday = datetime.now(ZoneInfo("Asia/Kolkata")).date() - timedelta(days=1)
+
+        self.assertEqual(service.get_available_slots(yesterday), [])
+        self.assertIsNone(service.service.events_api.last_list_query)
+
     def test_slot_overlap_uses_timezone_aware_event_times(self):
         clinic_tz = ZoneInfo("Asia/Kolkata")
         future_day = datetime.now(clinic_tz).date() + timedelta(days=10)
