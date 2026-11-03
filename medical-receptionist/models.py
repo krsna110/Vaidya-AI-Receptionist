@@ -23,8 +23,8 @@ class Appointment(Base):
             "date",
             "time",
             unique=True,
-            sqlite_where=text("is_confirmed = 1"),
-            postgresql_where=text("is_confirmed IS TRUE"),
+            sqlite_where=text("booking_status IN ('pending', 'confirmed')"),
+            postgresql_where=text("booking_status IN ('pending', 'confirmed')"),
         ),
     )
 
@@ -34,6 +34,7 @@ class Appointment(Base):
     end_time = Column(DateTime)
     description = Column(String, index=True)
     is_confirmed = Column(Boolean, default=False)
+    booking_status = Column(String(20), nullable=False, default="pending", server_default="pending")
     date = Column(String)  # Storing date as string for simplicity with current calendar_service
     time = Column(String)  # Storing time as string
     reason = Column(String) # Storing reason directly

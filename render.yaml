@@ -4,8 +4,8 @@ services:
     runtime: python
     rootDir: medical-receptionist
     buildCommand: pip install -r requirements.txt
-    startCommand: alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /ready
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -21,9 +21,29 @@ services:
         sync: false
       - key: RATE_LIMIT_STORAGE_URI
         sync: false
+      - key: ENABLE_SCHEDULER
+        value: "true"
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_MULTIMODAL_MODEL
+        value: gemini-3.8-flash
+      - key: VAIDYA_INTERNAL_WEBHOOK_SECRET
+        generateValue: true
+      - key: ALLOW_UNAUTHENTICATED_WEBHOOK
+        value: "false"
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: CLINIC_NAME
+        sync: false
+      - key: CLINIC_ADDRESS
         sync: false
       - key: CLINIC_TIMEZONE
         value: Asia/Kolkata
@@ -31,27 +51,15 @@ services:
         value: "9"
       - key: CLINIC_CLOSE_HOUR
         value: "18"
+      - key: CLINIC_WORKING_DAYS
+        value: "0,1,2,3,4,5,6"
+      - key: CLINIC_HOLIDAYS
+        sync: false
+      - key: CLINIC_BREAKS
+        sync: false
       - key: APPOINTMENT_DURATION_MINUTES
         value: "30"
       - key: GOOGLE_CALENDAR_ID
         sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: WHATSAPP_ACCESS_TOKEN
-        sync: false
-      - key: WHATSAPP_PHONE_NUMBER_ID
-        sync: false
-      - key: WHATSAPP_VERIFY_TOKEN
-        sync: false
-      - key: WHATSAPP_APP_SECRET
-        sync: false
-
-  - type: web
-    name: vaidyai-web
-    runtime: node
-    rootDir: vaidyai-web
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start -- -p $PORT
-    envVars:
-      - key: NEXT_PUBLIC_BACKEND_URL
         sync: false

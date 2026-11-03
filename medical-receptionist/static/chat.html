@@ -131,7 +131,7 @@
         <div class="absolute bottom-0 left-0 md:left-[280px] right-0 p-4 md:p-6 bg-gradient-to-t from-background via-background/95 to-transparent">
             <div class="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
                 <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-primary border-primary/30 hover:bg-primary/10 transition active:scale-95">Book Appointment</button>
-                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Cancel Booking</button>
+                <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Cancellation Help</button>
                 <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Clinic Timings</button>
                 <button type="button" class="quick-reply-btn whitespace-nowrap px-4 py-2 glass-panel rounded-full text-sm font-medium text-on-surface-variant hover:text-primary transition active:scale-95">Talk to Doctor</button>
             </div>
@@ -149,6 +149,7 @@
                     </button>
                 </div>
             </div>
+            <div id="turnstile-container" class="flex justify-center py-2"></div>
             <div class="mt-4 md:hidden h-16"></div>
         </div>
     </main>
@@ -182,10 +183,22 @@
         }
 
         function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+            if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+                throw new Error('A secure browser context is required to start a chat.');
+            }
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0'));
+            return hex.slice(0, 4).join('') + '-' +
+                hex.slice(4, 6).join('') + '-' +
+                hex.slice(6, 8).join('') + '-' +
+                hex.slice(8, 10).join('') + '-' +
+                hex.slice(10, 16).join('');
         }
 
         function appendMessage(message, sender) {
@@ -236,16 +249,56 @@
             if (wrapper) wrapper.remove();
         }
 
-        async function callWebhook(message) {
-            const response = await fetch('/webhook', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId, message })
-            });
-            if (!response.ok) {
-                throw new Error(`Webhook failed: ${response.statusText}`);
+        let turnstileToken = null;
+        let turnstileWidgetId = null;
+
+        async function initializeTurnstile() {
+            try {
+                const configResponse = await fetch('/public-config');
+                if (!configResponse.ok) return;
+                const config = await configResponse.json();
+                if (!config.turnstile_site_key) return;
+
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+
+                turnstileWidgetId = window.turnstile.render('#turnstile-container', {
+                    sitekey: config.turnstile_site_key,
+                    callback: (token) => { turnstileToken = token; },
+                    'expired-callback': () => { turnstileToken = null; },
+                    'error-callback': () => { turnstileToken = null; }
+                });
+            } catch (error) {
+                console.error('Security verification could not be initialized.', error);
             }
-            return response.json();
+        }
+
+        async function callWebhook(message) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (turnstileToken) headers['X-Turnstile-Token'] = turnstileToken;
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ user_id: userId, message })
+                });
+                if (!response.ok) {
+                    throw new Error(`Chat request failed: ${response.status}`);
+                }
+                return await response.json();
+            } finally {
+                if (turnstileWidgetId !== null && window.turnstile) {
+                    turnstileToken = null;
+                    window.turnstile.reset(turnstileWidgetId);
+                }
+            }
         }
 
         async function sendMessage() {
@@ -276,6 +329,7 @@
             }
         });
 
+        initializeTurnstile();
         appendMessage('Hello! Welcome to Vaidya AI reception. How can I assist you today?', 'ai');
     </script>
 </body>

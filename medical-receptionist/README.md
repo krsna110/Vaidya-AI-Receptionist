@@ -1,6 +1,6 @@
 # Medical AI Receptionist
 
-This project implements an AI-powered medical receptionist system designed to assist patients with appointment booking, answering frequently asked questions, and managing cancellations for a dental/medical clinic.
+This project implements an AI-powered medical receptionist system designed to assist patients with appointment booking and clinic FAQs, with admin-managed appointment cancellation for a dental/medical clinic.
 
 ## Tech Stack
 
@@ -12,7 +12,6 @@ This project implements an AI-powered medical receptionist system designed to as
 - **SQLite**: Database for storing conversation states and appointment details.
 - **APScheduler**: For scheduling reminder and follow-up jobs.
 - **Alembic**: For versioned database schema migrations.
-- **Database-backed WhatsApp queue**: Durable message processing, duplicate suppression, bounded retries, and 30-day retention for completed/dead-letter records.
 - **Python-dotenv**: For managing environment variables.
 
 ## Project Structure
@@ -93,26 +92,45 @@ Edit the `.env` file:
 ```
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 GROQ_API_KEY="YOUR_GROQ_API_KEY"
+GROQ_MODEL="llama-3.3-70b-versatile"
 DATABASE_URL="sqlite:///./sql_app.db"
 GEMINI_MODEL="gemini-3.8-flash"
 GEMINI_MULTIMODAL_MODEL="gemini-3.8-flash"
 JWT_SECRET="a-long-random-secret"
 ENVIRONMENT="development"
+VAIDYA_INTERNAL_WEBHOOK_SECRET=""
+ALLOW_UNAUTHENTICATED_WEBHOOK="true"
+TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
+CLINIC_NAME="Your Clinic Name"
+CLINIC_ADDRESS=""
+CLINIC_TIMEZONE="Asia/Kolkata"
+CLINIC_OPEN_HOUR="9"
+CLINIC_CLOSE_HOUR="18"
+CLINIC_WORKING_DAYS="0,1,2,3,4,5,6"
+CLINIC_HOLIDAYS=""
+CLINIC_BREAKS=""
+APPOINTMENT_DURATION_MINUTES="30"
 FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
 -   **GEMINI_API_KEY**: Obtain this from [Google AI Studio](https://aistudio.google.com/).
 -   **GROQ_API_KEY**: Obtain this from the [Groq Console](https://console.groq.com/keys).
 -   **DATABASE_URL**: The default SQLite path is already provided. You generally don't need to change this unless you're using a different database.
+-   **GEMINI_MODEL / GROQ_MODEL**: Provider model IDs are configurable. The default Gemini text model is `gemini-3.8-flash`; check Google's [current model list](https://ai.google.dev/gemini-api/docs/models) for availability in your project.
+-   **Clinic schedule**: Set the clinic timezone, opening/closing hour, working days (Monday=0 through Sunday=6), holidays (comma-separated ISO dates), breaks (e.g. `13:00-14:00`), address, and appointment duration to match the actual clinic. Defaults are examples, not verified clinic business hours.
+-   **Internal webhook**: In production, set a strong random `VAIDYA_INTERNAL_WEBHOOK_SECRET` and set `ALLOW_UNAUTHENTICATED_WEBHOOK=false`. The unsigned bypass is honored only outside production. Do not call the internal endpoint directly from browser code.
+-   **Public chat protection**: Configure Cloudflare Turnstile `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` before enabling production `/chat`. The site key is public and rendered in the browser; the secret key must remain server-side. Production `/chat` fails closed with HTTP 503 when the secret is missing and rejects missing/invalid challenge tokens. Local development does not require Turnstile.
 
 ### 7. Run the FastAPI Server
 
 ```bash
 cd medical-receptionist
-uvicorn whatsapp_app:app --reload
+alembic upgrade head
+uvicorn main:app --reload
 ```
 
-This starts the existing FastAPI app and registers the Meta WhatsApp media routes. Without WhatsApp credentials, the existing local API still starts; the WhatsApp webhook returns a configuration error until you set its credentials.
+This starts the core FastAPI application and its existing browser chat/admin UI. The optional WhatsApp adapter is not enabled by this command.
 
 The development server should be available at `http://127.0.0.1:8000`. For local use, run the command from the `medical-receptionist/` directory so the static files and `.env` are resolved correctly.
 
@@ -124,7 +142,7 @@ Open your web browser and navigate to:
 http://127.0.0.1:8000/chat
 ```
 
-The chat UI can start a conversation with the AI receptionist. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
+The chat UI can start a conversation with the AI receptionist. Existing appointment cancellation and rescheduling are not self-service in public chat because patient identity verification is not implemented; the assistant directs patients to clinic staff instead of claiming to change a booking. Admin cancellation is available through the authenticated API. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
 
 ### 9. Test with Swagger UI (API Documentation)
 
@@ -139,16 +157,31 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
 ## API Endpoints Reference
 
 -   **GET `/health`**
-    -   Description: Health check endpoint to verify the API is running.
+    -   Description: Liveness check to verify the API process is running.
     -   Status Code: 200 OK
+
+-   **GET `/ready`**
+    -   Description: Readiness check; returns 200 only when the database responds, Alembic migrations are applied, Google Calendar is configured, production security keys are present, at least one AI provider is configured, and an admin account has been bootstrapped.
+    -   Returns 503 when a required dependency is unavailable.
 
 -   **POST `/auth/token`**
     -   Description: Authenticates a database-backed user and returns a short-lived access token. Bootstrap the first admin with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
     -   Request Body: OAuth2 form fields `username` and `password`.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
--   **POST `/webhook` (public chat endpoint)**
-    -   Description: Accepts bounded, rate-limited chat messages for public browser clients. It is not JWT-protected because the browser chat is public; rate limiting and request validation reduce abuse but do not replace a gateway/WAF.
+-   **POST `/chat` (existing browser chat UI)**
+    -   Description: Applies a 10-requests-per-minute rate limit. In production, the backend verifies the Cloudflare Turnstile token with Cloudflare before processing the message. Configure both Turnstile keys; missing secret configuration fails closed. Add edge WAF/rate controls as an additional layer. Rate limiting alone is not complete bot protection.
+    -   Request Body (JSON):
+        ```json
+        {
+            "user_id": "string (session identifier)",
+            "message": "string"
+        }
+        ```
+
+-   **POST `/webhook` (internal processing endpoint)**
+    -   Description: In production, requires a timestamped HMAC signature using `VAIDYA_INTERNAL_WEBHOOK_SECRET`. Direct unsigned calls are rejected, including when the local-development bypass flag is set. For local development only, `ALLOW_UNAUTHENTICATED_WEBHOOK=true` permits unsigned calls when `ENVIRONMENT` is not `production` or `prod`.
+    -   Security note: Do not call this endpoint directly from browser code. A browser cannot safely hold a shared HMAC secret.
     -   Request Body (JSON):
         ```json
         {

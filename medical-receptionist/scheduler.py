@@ -7,9 +7,8 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 
-from database import SessionLocal, engine
-from models import Appointment, Base
-from calendar_service import GoogleCalendarService
+from database import SessionLocal
+from models import Appointment
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -21,16 +20,6 @@ class Scheduler:
     def __init__(self):
         self.timezone = ZoneInfo(os.getenv("CLINIC_TIMEZONE", "Asia/Kolkata"))
         self.scheduler = AsyncIOScheduler(timezone=self.timezone)
-        try:
-            self.calendar_service = GoogleCalendarService()
-        except Exception as e:
-            logger.warning(f"Calendar service unavailable in scheduler: {e}")
-            self.calendar_service = None
-        self._create_db_tables()
-
-    def _create_db_tables(self):
-        # Ensure tables are created if they don't exist
-        Base.metadata.create_all(bind=engine)
 
     async def reminder_job(self):
         logger.info("Running reminder job...")
@@ -41,6 +30,8 @@ class Scheduler:
                 session.query(Appointment)
                 .filter(
                     Appointment.date == tomorrow.isoformat(),
+                    Appointment.booking_status == "confirmed",
+                    Appointment.is_confirmed.is_(True),
                     Appointment.reminder_status == None,
                 )
                 .all()
@@ -67,7 +58,7 @@ class Scheduler:
                         f"Error processing reminder for appointment {appt.id}: {e}"
                     )
         except Exception as e:
-            logger.error(f"Error in reminder job: {e}")
+            logger.error("Reminder job failed | error_type=%s", type(e).__name__)
         finally:
             session.close()
 
@@ -80,6 +71,8 @@ class Scheduler:
                 session.query(Appointment)
                 .filter(
                     Appointment.date == today.isoformat(),
+                    Appointment.booking_status == "confirmed",
+                    Appointment.is_confirmed.is_(True),
                     Appointment.followup_status == None,
                 )
                 .all()
@@ -105,7 +98,7 @@ class Scheduler:
                         f"Error processing follow-up for appointment {appt.id}: {e}"
                     )
         except Exception as e:
-            logger.error(f"Error in follow-up job: {e}")
+            logger.error("Follow-up job failed | error_type=%s", type(e).__name__)
         finally:
             session.close()
 

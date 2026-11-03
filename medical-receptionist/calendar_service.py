@@ -76,7 +76,7 @@ class GoogleCalendarService:
             service = build("calendar", "v3", credentials=self.creds)
             return service
         except HttpError as error:
-            print(f"An error occurred while connecting to Google Calendar: {error}")
+            logger.error("Google Calendar connection failed | error_type=%s", type(error).__name__)
             return None
 
     def get_available_slots(self, date: datetime.date, duration_minutes: int | None = None) -> list[str]:
@@ -99,9 +99,50 @@ class GoogleCalendarService:
             end_hour = int(os.getenv("CLINIC_CLOSE_HOUR", "18"))
             if not (0 <= start_hour < end_hour <= 24):
                 raise ValueError("Clinic hours must satisfy 0 <= open < close <= 24")
+
+            working_days_raw = os.getenv("CLINIC_WORKING_DAYS", "0,1,2,3,4,5,6")
+            working_days = {
+                int(value.strip()) for value in working_days_raw.split(",") if value.strip()
+            }
+            if not working_days or any(day_number < 0 or day_number > 6 for day_number in working_days):
+                raise ValueError("CLINIC_WORKING_DAYS must be comma-separated weekday numbers from 0 (Monday) to 6 (Sunday)")
+            if date.weekday() not in working_days:
+                return []
+
+            holidays = {
+                value.strip() for value in os.getenv("CLINIC_HOLIDAYS", "").split(",")
+                if value.strip()
+            }
+            for holiday in holidays:
+                datetime.date.fromisoformat(holiday)
+            if date.isoformat() in holidays:
+                return []
+
+            breaks: list[tuple[datetime.time, datetime.time]] = []
+            for raw_break in os.getenv("CLINIC_BREAKS", "").split(","):
+                raw_break = raw_break.strip()
+                if not raw_break:
+                    continue
+                start_text, separator, end_text = raw_break.partition("-")
+                if not separator:
+                    raise ValueError("CLINIC_BREAKS entries must use HH:MM-HH:MM format")
+                break_start = datetime.datetime.strptime(start_text.strip(), "%H:%M").time()
+                break_end = datetime.datetime.strptime(end_text.strip(), "%H:%M").time()
+                if break_start >= break_end:
+                    raise ValueError("Each clinic break must end after it starts")
+                if break_start < datetime.time(start_hour) or (
+                    end_hour < 24 and break_end > datetime.time(end_hour)
+                ):
+                    raise ValueError("Clinic breaks must fall within clinic opening hours")
+                breaks.append((break_start, break_end))
+
             day_start = datetime.datetime.combine(date, datetime.time(start_hour), tzinfo=clinic_tz)
-            day_end = datetime.datetime.combine(date, datetime.time(end_hour), tzinfo=clinic_tz)
+            day_end_date = date + datetime.timedelta(days=1) if end_hour == 24 else date
+            day_end_time = datetime.time.min if end_hour == 24 else datetime.time(end_hour)
+            day_end = datetime.datetime.combine(day_end_date, day_end_time, tzinfo=clinic_tz)
             now = datetime.datetime.now(clinic_tz)
+            if date < now.date():
+                return []
             current_time = day_start
             if date == now.date() and current_time < now:
                 elapsed = (now - day_start).total_seconds()
@@ -133,8 +174,14 @@ class GoogleCalendarService:
             free_slots: list[str] = []
             while current_time + datetime.timedelta(minutes=duration) <= day_end:
                 slot_end = current_time + datetime.timedelta(minutes=duration)
-                is_free = True
+                is_free = not any(
+                    datetime.datetime.combine(date, break_start, tzinfo=clinic_tz) < slot_end
+                    and datetime.datetime.combine(date, break_end, tzinfo=clinic_tz) > current_time
+                    for break_start, break_end in breaks
+                )
                 for event in events:
+                    if not is_free:
+                        break
                     event_start_raw = event.get("start", {}).get("dateTime") or event.get("start", {}).get("date")
                     event_end_raw = event.get("end", {}).get("dateTime") or event.get("end", {}).get("date")
                     if not event_start_raw or not event_end_raw:
@@ -152,7 +199,42 @@ class GoogleCalendarService:
             logger.exception("Failed to calculate available clinic slots")
             return []
 
-    def book_appointment(self, patient_name: str, phone: str, start_datetime: datetime.datetime, reason: str) -> str | None:
+    def find_appointment_event(self, booking_reference: str) -> str | None:
+        """Find an existing Calendar event created for a durable appointment ID.
+
+        This must be checked before availability: an orphaned event already
+        occupies its slot, but is the event we need to recover, not a conflict.
+        Raises on API errors so callers can fail closed instead of creating a
+        duplicate event when the lookup itself is unreliable.
+        """
+        if not self.service or not booking_reference:
+            return None
+        events = (
+            self.service.events()
+            .list(
+                calendarId=self.calendar_id,
+                privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
+                maxResults=1,
+                singleEvents=True,
+            )
+            .execute()
+            .get("items", [])
+        )
+        if not events:
+            return None
+        event_id = events[0].get("id")
+        if not event_id:
+            raise RuntimeError("Matching Calendar event has no ID")
+        return event_id
+
+    def book_appointment(
+        self,
+        patient_name: str,
+        phone: str,
+        start_datetime: datetime.datetime,
+        reason: str,
+        booking_reference: str | None = None,
+    ) -> str | None:
         if not self.service:
             return None
 
@@ -171,10 +253,35 @@ class GoogleCalendarService:
             return None
 
         end_datetime = start_datetime + datetime.timedelta(minutes=duration)
+
+        # Recover an event created before a process crash or DB commit failure.
+        # The private property contains only the internal appointment ID, not PHI.
+        if booking_reference:
+            try:
+                existing_event_id = self.find_appointment_event(booking_reference)
+                if existing_event_id:
+                    return existing_event_id
+            except Exception:
+                logger.exception("Could not check Calendar for an existing booking reference")
+                return None
+
+        # Check only after orphan-event recovery: an existing event occupies the
+        # slot but is the successful result we need to recover on retry.
+        # This also prevents direct service callers from bypassing clinic hours,
+        # holidays, breaks, or Calendar conflict checks.
+        available_slots = self.get_available_slots(start_datetime.date(), duration)
+        if start_datetime.strftime("%H:%M") not in available_slots:
+            logger.warning("Calendar booking rejected because the requested slot is unavailable")
+            return None
+
+        clinic_name = os.getenv("CLINIC_NAME", "Clinic").strip() or "Clinic"
         event_body = {
-            "summary": f"Appointment: {reason} - {patient_name}",
+            "summary": f"Appointment at {clinic_name}",
             "location": os.getenv("CLINIC_ADDRESS", "").strip() or None,
-            "description": "Patient contact details are stored in the clinic system.",
+            "description": f"Appointment reference: {booking_reference}. Patient details and visit reason are stored in the clinic system." if booking_reference else "Patient details and visit reason are stored in the clinic system.",
+            "extendedProperties": {
+                "private": {"vaidya_appointment_id": str(booking_reference)}
+            } if booking_reference else {},
             "start": {"dateTime": start_datetime.isoformat(), "timeZone": timezone_name},
             "end": {"dateTime": end_datetime.isoformat(), "timeZone": timezone_name},
             "reminders": {
@@ -191,11 +298,11 @@ class GoogleCalendarService:
             event = self.service.events().insert(calendarId=self.calendar_id, body=event_body).execute()
             logger.info("Google Calendar event created")
             return event.get("id")
-        except HttpError:
-            logger.exception("Google Calendar rejected appointment creation")
+        except HttpError as exc:
+            logger.error("Google Calendar rejected appointment creation | error_type=%s", type(exc).__name__)
             return None
-        except Exception:
-            logger.exception("Unexpected error while creating Google Calendar event")
+        except Exception as exc:
+            logger.error("Google Calendar event creation failed | error_type=%s", type(exc).__name__)
             return None
 
     def cancel_appointment(self, event_id: str) -> bool:
@@ -204,16 +311,49 @@ class GoogleCalendarService:
 
         try:
             self.service.events().delete(calendarId=self.calendar_id, eventId=event_id).execute()
-            print(f"Event {event_id} cancelled successfully.")
+            logger.info("Google Calendar event cancelled")
             return True
         except HttpError as error:
             if error.resp.status == 404:
-                print(f"Event with ID {event_id} not found.")
-            else:
-                print(f"An error occurred while cancelling the appointment: {error}")
+                # DELETE is idempotent for our booking workflow: an event already
+                # removed in Calendar should not leave the local booking stuck as confirmed.
+                logger.info("Google Calendar event was already absent during cancellation")
+                return True
+            logger.error("Google Calendar cancellation failed | status=%s", error.resp.status)
             return False
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            logger.error("Google Calendar cancellation failed | error_type=%s", type(e).__name__)
+            return False
+
+    def cancel_appointment_by_reference(self, booking_reference: str) -> bool:
+        """Cancel an event by durable appointment reference when its event ID was not saved."""
+        if not self.service:
+            return False
+        try:
+            events = (
+                self.service.events()
+                .list(
+                    calendarId=self.calendar_id,
+                    privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
+                    maxResults=1,
+                    singleEvents=True,
+                )
+                .execute()
+                .get("items", [])
+            )
+            if not events:
+                # No matching event is equivalent to an already-completed cancellation.
+                return True
+            event_id = events[0].get("id")
+            if not event_id:
+                logger.error("Calendar event found without an ID for booking reference")
+                return False
+            return self.cancel_appointment(event_id)
+        except Exception as exc:
+            logger.error(
+                "Calendar cancellation by booking reference failed | error_type=%s",
+                type(exc).__name__,
+            )
             return False
 
     def suggest_best_slot(self, date: datetime.date, duration_minutes: int = 30) -> str or None:
