@@ -161,7 +161,7 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Status Code: 200 OK
 
 -   **GET `/ready`**
-    -   Description: Readiness check; returns 200 only when the database responds, Alembic migrations are applied, and the Google Calendar client is configured.
+    -   Description: Readiness check; returns 200 only when the database responds, Alembic migrations are applied, Google Calendar is configured, production security keys are present, and at least one AI provider is configured.
     -   Returns 503 when a required dependency is unavailable.
 
 -   **POST `/auth/token`**
