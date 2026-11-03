@@ -49,6 +49,8 @@ Set these environment variables in the hosting provider's secret/configuration U
 | `ALLOW_UNAUTHENTICATED_WEBHOOK` | Set to `false` in production; the unsigned bypass is ignored in production |
 | `TURNSTILE_SITE_KEY` | Required for production public chat; browser-visible Cloudflare Turnstile site key |
 | `TURNSTILE_SECRET_KEY` | Required for production public chat; server-only Cloudflare Turnstile secret |
+| `RATE_LIMIT_STORAGE_URI` | Redis URL for shared rate limits when running multiple workers |
+| `ENABLE_SCHEDULER` | `true` for a single API worker; `false` on API replicas when using one separate scheduler process |
 | `GOOGLE_CALENDAR_ID` | Calendar ID shared with the service account |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Production service-account JSON stored as a secret |
 
