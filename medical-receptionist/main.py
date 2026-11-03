@@ -918,6 +918,12 @@ def serve_chat():
     return FileResponse("static/chat.html")
 
 
+@app.get("/portal")
+def serve_patient_portal():
+    """Serve the patient-facing portal and AI receptionist chat UI."""
+    return FileResponse("static/chat.html")
+
+
 @app.get("/admin")
 def serve_admin():
     """Serve the admin dashboard UI."""
