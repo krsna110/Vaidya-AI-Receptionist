@@ -872,10 +872,18 @@ async def health_check():
 async def readiness_check(db: Session = Depends(database.get_db)):
     """Report readiness only when persistence and the booking calendar are available."""
     try:
-        db.execute(text("SELECT 1"))
+        environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+        if environment in {"production", "prod"}:
+            migration = db.execute(
+                text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).first()
+            if migration is None:
+                raise RuntimeError("Database migrations have not been applied.")
+        else:
+            db.execute(text("SELECT 1"))
     except Exception as exc:
-        logger.error("Readiness database check failed | error_type=%s", type(exc).__name__)
-        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+        logger.error("Readiness database/schema check failed | error_type=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Database schema is unavailable or not migrated.") from exc
 
     if calendar_service is None or getattr(calendar_service, "service", None) is None:
         raise HTTPException(status_code=503, detail="Google Calendar is unavailable.")
