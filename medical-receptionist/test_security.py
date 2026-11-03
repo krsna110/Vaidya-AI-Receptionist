@@ -72,7 +72,6 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
                 app.dependency_overrides[main_module.database.get_db] = original_override
 
     async def test_production_readiness_fails_without_alembic_version(self):
-        original_environment = os.environ.get("ENVIRONMENT")
         original_calendar = main_module.calendar_service
 
         def database_without_migrations():
@@ -82,20 +81,22 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
 
         app.dependency_overrides[main_module.database.get_db] = database_without_migrations
         main_module.calendar_service = Mock(service=Mock())
-        os.environ["ENVIRONMENT"] = "production"
         try:
-            response = await self.client.get("/ready")
-            self.assertEqual(response.status_code, 503)
+            with patch.dict(os.environ, {
+                "ENVIRONMENT": "production",
+                "TURNSTILE_SITE_KEY": "test-site-key",
+                "TURNSTILE_SECRET_KEY": "test-secret-key",
+                "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
+                "GEMINI_API_KEY": "test-gemini-key",
+                "GROQ_API_KEY": "",
+            }):
+                response = await self.client.get("/ready")
+                self.assertEqual(response.status_code, 503)
         finally:
             app.dependency_overrides.pop(main_module.database.get_db, None)
             main_module.calendar_service = original_calendar
-            if original_environment is None:
-                os.environ.pop("ENVIRONMENT", None)
-            else:
-                os.environ["ENVIRONMENT"] = original_environment
 
     async def test_production_readiness_passes_with_migration_version(self):
-        original_environment = os.environ.get("ENVIRONMENT")
         original_calendar = main_module.calendar_service
 
         def migrated_database():
@@ -105,17 +106,70 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
 
         app.dependency_overrides[main_module.database.get_db] = migrated_database
         main_module.calendar_service = Mock(service=Mock())
-        os.environ["ENVIRONMENT"] = "production"
         try:
-            response = await self.client.get("/ready")
-            self.assertEqual(response.status_code, 200)
+            with patch.dict(os.environ, {
+                "ENVIRONMENT": "production",
+                "TURNSTILE_SITE_KEY": "test-site-key",
+                "TURNSTILE_SECRET_KEY": "test-secret-key",
+                "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
+                "GEMINI_API_KEY": "test-gemini-key",
+                "GROQ_API_KEY": "",
+            }):
+                response = await self.client.get("/ready")
+                self.assertEqual(response.status_code, 200)
         finally:
             app.dependency_overrides.pop(main_module.database.get_db, None)
             main_module.calendar_service = original_calendar
-            if original_environment is None:
-                os.environ.pop("ENVIRONMENT", None)
-            else:
-                os.environ["ENVIRONMENT"] = original_environment
+
+    async def test_production_readiness_fails_without_turnstile_configuration(self):
+        original_calendar = main_module.calendar_service
+
+        def migrated_database():
+            db = Mock()
+            db.execute.return_value.first.return_value = ("head",)
+            yield db
+
+        app.dependency_overrides[main_module.database.get_db] = migrated_database
+        main_module.calendar_service = Mock(service=Mock())
+        try:
+            with patch.dict(os.environ, {
+                "ENVIRONMENT": "production",
+                "TURNSTILE_SITE_KEY": "test-site-key",
+                "TURNSTILE_SECRET_KEY": "",
+                "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
+                "GEMINI_API_KEY": "test-gemini-key",
+                "GROQ_API_KEY": "",
+            }):
+                response = await self.client.get("/ready")
+                self.assertEqual(response.status_code, 503)
+        finally:
+            app.dependency_overrides.pop(main_module.database.get_db, None)
+            main_module.calendar_service = original_calendar
+
+    async def test_production_readiness_fails_without_ai_provider(self):
+        original_calendar = main_module.calendar_service
+
+        def migrated_database():
+            db = Mock()
+            db.execute.return_value.first.return_value = ("head",)
+            yield db
+
+        app.dependency_overrides[main_module.database.get_db] = migrated_database
+        main_module.calendar_service = Mock(service=Mock())
+        try:
+            with patch.dict(os.environ, {
+                "ENVIRONMENT": "production",
+                "TURNSTILE_SITE_KEY": "test-site-key",
+                "TURNSTILE_SECRET_KEY": "test-secret-key",
+                "VAIDYA_INTERNAL_WEBHOOK_SECRET": "test-webhook-secret",
+                "GEMINI_API_KEY": "",
+                "GROQ_API_KEY": "",
+            }):
+                response = await self.client.get("/ready")
+                self.assertEqual(response.status_code, 503)
+        finally:
+            app.dependency_overrides.pop(main_module.database.get_db, None)
+            main_module.calendar_service = original_calendar
 
     async def test_readiness_succeeds_when_database_and_calendar_are_available(self):
         original_calendar = main_module.calendar_service
