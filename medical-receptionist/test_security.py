@@ -267,6 +267,9 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         })
         main_module.agent.extract_patient_data = Mock(return_value={})
         calendar_mock = Mock()
+        # The sync path checks for an orphaned event before checking slot availability.
+        # This test exercises the new-booking path, so explicitly report no existing event.
+        calendar_mock.find_appointment_event.return_value = None
         calendar_mock.get_available_slots.return_value = [slot_time]
         calendar_mock.book_appointment.return_value = "history-test-calendar-event"
         main_module.calendar_service = calendar_mock
