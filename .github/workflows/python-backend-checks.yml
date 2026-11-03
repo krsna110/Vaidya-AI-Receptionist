@@ -7,7 +7,6 @@ on:
       - feat/whatsapp-voice-image
       - fix/production-readiness-backlog
       - fix/issue-5-internal-webhook-auth
-      - chore/local-development-readiness
       - fix/whatsapp-render-entrypoint
       - chore/local-development-readiness
       - test/booking-cancellation-api
@@ -15,6 +14,7 @@ on:
     branches:
       - main
       - fix/issue-5-internal-webhook-auth
+      - chore/local-development-readiness
 
 jobs:
   unit-tests:
