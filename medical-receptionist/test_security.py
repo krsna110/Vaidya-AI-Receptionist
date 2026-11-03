@@ -210,6 +210,55 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         finally:
             main_module.calendar_service = original_calendar
 
+    async def test_admin_conversation_inbox_requires_authentication(self):
+        response = await self.client.get("/admin/conversations")
+        self.assertEqual(response.status_code, 401)
+
+    async def test_admin_conversation_inbox_returns_saved_threads(self):
+        db = SessionLocal()
+        username = "ci-inbox-admin"
+        password = "test-inbox-password-long-enough"
+        session_id = "ci-inbox-session-regression"
+        try:
+            user = db.query(models.User).filter_by(username=username).first()
+            if user is None:
+                db.add(models.User(
+                    username=username,
+                    email="ci-inbox-admin@localhost.invalid",
+                    hashed_password=hash_password(password),
+                ))
+                db.commit()
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            db.add(models.Conversation(
+                session_id=session_id,
+                sender_type="USER",
+                speaker="patient",
+                message="I would like to book an appointment.",
+            ))
+            db.commit()
+
+            login = await self.client.post(
+                "/auth/token",
+                data={"username": username, "password": password},
+            )
+            self.assertEqual(login.status_code, 200)
+            response = await self.client.get(
+                "/admin/conversations",
+                headers={"Authorization": "Bearer " + login.json()["access_token"]},
+            )
+            self.assertEqual(response.status_code, 200)
+            thread = next(
+                item for item in response.json()
+                if item["session_id"] == session_id
+            )
+            self.assertEqual(thread["last_message"], "I would like to book an appointment.")
+            self.assertEqual(thread["messages"][0]["sender"], "patient")
+        finally:
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            db.query(models.User).filter_by(username=username).delete()
+            db.commit()
+            db.close()
+
     async def test_demo_admin_credentials_are_rejected(self):
         response = await self.client.post(
             "/auth/token",
