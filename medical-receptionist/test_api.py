@@ -18,6 +18,7 @@ from main import (
     create_appointment_from_booking_data,
     get_recent_conversation_history,
     parse_conversation_state_data,
+    sync_appointment_to_google_calendar,
 )
 from database import SessionLocal
 import models
@@ -25,6 +26,32 @@ from state import StateManager, ConversationState
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_calendar_sync_recovers_orphan_event_before_slot_availability_check(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+
+        appointment = SimpleNamespace(
+            id=987,
+            google_event_id=None,
+            patient=SimpleNamespace(name="Test Patient", phone_number="+919876543210"),
+            date="2098-12-30",
+            time="11:00",
+            reason="recovery regression",
+        )
+        db = Mock()
+        db.query.return_value.filter.return_value.first.return_value = appointment
+        calendar = Mock()
+        calendar.find_appointment_event.return_value = "orphan-calendar-event"
+
+        with patch("main.calendar_service", calendar):
+            event_id = sync_appointment_to_google_calendar(db, appointment.id)
+
+        self.assertEqual(event_id, "orphan-calendar-event")
+        self.assertEqual(appointment.google_event_id, "orphan-calendar-event")
+        calendar.get_available_slots.assert_not_called()
+        calendar.book_appointment.assert_not_called()
+        db.commit.assert_called_once()
+
     def test_booking_state_survives_state_manager_restart(self):
         user_id = "state-restart-regression-test"
         first_manager = StateManager()
