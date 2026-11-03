@@ -1,6 +1,7 @@
 """Deterministic unit tests for booking helpers; no live server or AI keys required."""
 import os
 import unittest
+from pathlib import Path
 from sqlalchemy.exc import IntegrityError
 
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -28,6 +29,12 @@ from state import StateManager, ConversationState
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_render_uses_whatsapp_asgi_entrypoint(self):
+        render_config = Path(__file__).resolve().parents[1] / "render.yaml"
+        content = render_config.read_text(encoding="utf-8")
+        self.assertIn("uvicorn whatsapp_app:app", content)
+        self.assertNotIn("uvicorn main:app", content)
+
     def test_production_schema_is_managed_by_alembic_not_create_all(self):
         from unittest.mock import patch
 
