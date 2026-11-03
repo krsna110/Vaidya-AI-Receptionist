@@ -210,6 +210,18 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         finally:
             main_module.calendar_service = original_calendar
 
+    async def test_patient_portal_route_serves_new_patient_interface(self):
+        response = await self.client.get("/portal")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("patient portal", response.text.lower())
+        self.assertIn("Vaidya AI Receptionist", response.text)
+
+    async def test_admin_route_serves_new_clinic_workspace(self):
+        response = await self.client.get("/admin")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Conversation inbox", response.text)
+        self.assertIn("Clinic workspace", response.text)
+
     async def test_admin_conversation_inbox_requires_authentication(self):
         response = await self.client.get("/admin/conversations")
         self.assertEqual(response.status_code, 401)
