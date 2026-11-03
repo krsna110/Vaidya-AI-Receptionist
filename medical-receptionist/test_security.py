@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import unittest
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock, patch
 from datetime import datetime, timezone
 
 import httpx
@@ -423,6 +423,104 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 422)
         finally:
             main_module.limiter.enabled = limiter_enabled
+
+    async def test_production_chat_fails_closed_without_turnstile_configuration(self):
+        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY")}
+        limiter_enabled = main_module.limiter.enabled
+        main_module.limiter.enabled = False
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ.pop("TURNSTILE_SECRET_KEY", None)
+        try:
+            response = await self.client.post(
+                "/chat", json={"session_id": "turnstile-config-test", "message": "test"}
+            )
+            self.assertEqual(response.status_code, 503)
+        finally:
+            main_module.limiter.enabled = limiter_enabled
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+    async def test_production_chat_rejects_missing_turnstile_token(self):
+        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY")}
+        limiter_enabled = main_module.limiter.enabled
+        main_module.limiter.enabled = False
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["TURNSTILE_SECRET_KEY"] = "test-turnstile-secret"
+        try:
+            response = await self.client.post(
+                "/chat", json={"session_id": "turnstile-token-test", "message": "test"}
+            )
+            self.assertEqual(response.status_code, 403)
+        finally:
+            main_module.limiter.enabled = limiter_enabled
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+    async def test_turnstile_success_response_is_accepted(self):
+        from types import SimpleNamespace
+
+        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY")}
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["TURNSTILE_SECRET_KEY"] = "test-turnstile-secret"
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"success": True}
+        client = Mock()
+        client.post = AsyncMock(return_value=response)
+        context = Mock()
+        context.__aenter__ = AsyncMock(return_value=client)
+        context.__aexit__ = AsyncMock(return_value=False)
+        request = SimpleNamespace(
+            headers={"X-Turnstile-Token": "valid-test-token"},
+            client=SimpleNamespace(host="127.0.0.1"),
+        )
+        try:
+            with patch.object(main_module.httpx, "AsyncClient", return_value=context):
+                await main_module.verify_public_chat_challenge(request)
+            client.post.assert_awaited_once()
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+    async def test_turnstile_failure_response_is_rejected(self):
+        from types import SimpleNamespace
+        from fastapi import HTTPException
+
+        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY")}
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["TURNSTILE_SECRET_KEY"] = "test-turnstile-secret"
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"success": False}
+        client = Mock()
+        client.post = AsyncMock(return_value=response)
+        context = Mock()
+        context.__aenter__ = AsyncMock(return_value=client)
+        context.__aexit__ = AsyncMock(return_value=False)
+        request = SimpleNamespace(
+            headers={"X-Turnstile-Token": "invalid-test-token"},
+            client=SimpleNamespace(host="127.0.0.1"),
+        )
+        try:
+            with patch.object(main_module.httpx, "AsyncClient", return_value=context):
+                with self.assertRaises(HTTPException) as raised:
+                    await main_module.verify_public_chat_challenge(request)
+            self.assertEqual(raised.exception.status_code, 403)
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     async def test_public_chat_is_available_without_internal_hmac(self):
         response = await self.client.post(
