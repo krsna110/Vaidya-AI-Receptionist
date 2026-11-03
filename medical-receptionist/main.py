@@ -301,6 +301,18 @@ def missing_booking_fields(data: dict) -> list[str]:
     return [field for field in required if not (data.get(field) or "").strip()]
 
 
+def merge_non_empty_booking_data(*sources: dict) -> dict:
+    """Merge extracted booking fields without letting null/blank values erase known details."""
+    merged: dict = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for key, value in source.items():
+            if value is not None and (not isinstance(value, str) or value.strip()):
+                merged[key] = value
+    return merged
+
+
 def booking_summary(data: dict) -> str:
     return (
         f"name: {data.get('name')}, phone: {normalize_phone(data.get('phone') or '')}, "
@@ -938,10 +950,7 @@ async def webhook_receiver(
 
     # Merge LLM extracted data with deterministic data
     deterministic_data = extract_booking_details(message)
-    if isinstance(data, dict):
-        data = {**data, **deterministic_data, **extracted_patient_data}
-    else:
-        data = {**deterministic_data, **extracted_patient_data}
+    data = merge_non_empty_booking_data(data, deterministic_data, extracted_patient_data)
 
     booking_states = {"COLLECT_INFO", "SUGGEST_SLOT", "CONFIRM", "BOOKING"}
     if current_state in booking_states and intent in {"GREETING", "FAQ", "UNKNOWN"} and is_booking_message(message, data):
