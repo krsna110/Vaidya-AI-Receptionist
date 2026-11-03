@@ -100,6 +100,8 @@ JWT_SECRET="a-long-random-secret"
 ENVIRONMENT="development"
 VAIDYA_INTERNAL_WEBHOOK_SECRET=""
 ALLOW_UNAUTHENTICATED_WEBHOOK="true"
+TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
 CLINIC_NAME="Your Clinic Name"
 CLINIC_ADDRESS=""
 CLINIC_TIMEZONE="Asia/Kolkata"
@@ -118,6 +120,7 @@ FRONTEND_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 -   **GEMINI_MODEL / GROQ_MODEL**: Provider model IDs are configurable. The default Gemini text model is `gemini-3.8-flash`; check Google's [current model list](https://ai.google.dev/gemini-api/docs/models) for availability in your project.
 -   **Clinic schedule**: Set the clinic timezone, opening/closing hour, working days (Monday=0 through Sunday=6), holidays (comma-separated ISO dates), breaks (e.g. `13:00-14:00`), address, and appointment duration to match the actual clinic. Defaults are examples, not verified clinic business hours.
 -   **Internal webhook**: In production, set a strong random `VAIDYA_INTERNAL_WEBHOOK_SECRET` and set `ALLOW_UNAUTHENTICATED_WEBHOOK=false`. The unsigned bypass is honored only outside production. Do not call the internal endpoint directly from browser code.
+-   **Public chat protection**: Configure Cloudflare Turnstile `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` before enabling production `/chat`. The site key is public and rendered in the browser; the secret key must remain server-side. Production `/chat` fails closed with HTTP 503 when the secret is missing and rejects missing/invalid challenge tokens. Local development does not require Turnstile.
 
 ### 7. Run the FastAPI Server
 
@@ -163,8 +166,7 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
     -   Response: `{"access_token": "<JWT_TOKEN>", "token_type": "bearer"}`
 
 -   **POST `/chat` (existing browser chat UI)**
-    -   Description: Accepts the website chat UI requests without an HMAC secret and applies a 10-requests-per-minute rate limit. The existing chat page calls this endpoint.
-    -   Production security: Put this endpoint behind a server-side bot-verification layer (for example, Turnstile verified by the backend) and gateway/WAF controls before public launch. Rate limiting alone is not complete bot protection.
+    -   Description: Applies a 10-requests-per-minute rate limit. In production, the backend verifies the Cloudflare Turnstile token with Cloudflare before processing the message. Configure both Turnstile keys; missing secret configuration fails closed. Add edge WAF/rate controls as an additional layer. Rate limiting alone is not complete bot protection.
     -   Request Body (JSON):
         ```json
         {
