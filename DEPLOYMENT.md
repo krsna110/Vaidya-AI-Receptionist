@@ -8,6 +8,8 @@ Use a Python web service for the FastAPI application and managed PostgreSQL for 
 
 ### Backend service
 
+Use `whatsapp_app:app` as the ASGI entrypoint. It imports the core FastAPI app, registers the Meta WhatsApp webhook routes, and starts the durable WhatsApp queue worker during application startup. Using `main:app` omits those WhatsApp routes and the queue worker.
+
 Root directory:
 
 ```text
@@ -23,7 +25,7 @@ pip install -r requirements.txt
 Start command:
 
 ```bash
-alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
+alembic upgrade head && uvicorn whatsapp_app:app --host 0.0.0.0 --port $PORT
 ```
 
 Set these environment variables in the hosting provider's secret/configuration UI. Never commit real values:
