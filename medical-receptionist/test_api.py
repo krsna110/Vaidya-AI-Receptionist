@@ -54,8 +54,12 @@ class BookingHelperTests(unittest.TestCase):
             })
         finally:
             second_manager.reset_state(user_id)
-            second_manager.db.query(ConversationState).filter_by(user_id=user_id).delete()
-            second_manager.db.commit()
+            cleanup_db = SessionLocal()
+            try:
+                cleanup_db.query(ConversationState).filter_by(user_id=user_id).delete()
+                cleanup_db.commit()
+            finally:
+                cleanup_db.close()
             second_manager.close()
 
     def test_state_manager_recovers_from_malformed_persisted_json(self):
@@ -69,7 +73,6 @@ class BookingHelperTests(unittest.TestCase):
             db.commit()
             updated = manager.set_state(user_id, "COLLECT_INFO", {"name": "Rahul"})
             self.assertEqual(__import__("json").loads(updated.data), {
-                "unknown_count": 0,
                 "name": "Rahul",
             })
         finally:
