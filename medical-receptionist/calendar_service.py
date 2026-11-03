@@ -195,6 +195,34 @@ class GoogleCalendarService:
             logger.exception("Failed to calculate available clinic slots")
             return []
 
+    def find_appointment_event(self, booking_reference: str) -> str | None:
+        """Find an existing Calendar event created for a durable appointment ID.
+
+        This must be checked before availability: an orphaned event already
+        occupies its slot, but is the event we need to recover, not a conflict.
+        Raises on API errors so callers can fail closed instead of creating a
+        duplicate event when the lookup itself is unreliable.
+        """
+        if not self.service or not booking_reference:
+            return None
+        events = (
+            self.service.events()
+            .list(
+                calendarId=self.calendar_id,
+                privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
+                maxResults=1,
+                singleEvents=True,
+            )
+            .execute()
+            .get("items", [])
+        )
+        if not events:
+            return None
+        event_id = events[0].get("id")
+        if not event_id:
+            raise RuntimeError("Matching Calendar event has no ID")
+        return event_id
+
     def book_appointment(
         self,
         patient_name: str,
@@ -226,19 +254,9 @@ class GoogleCalendarService:
         # The private property contains only the internal appointment ID, not PHI.
         if booking_reference:
             try:
-                existing = (
-                    self.service.events()
-                    .list(
-                        calendarId=self.calendar_id,
-                        privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
-                        maxResults=1,
-                        singleEvents=True,
-                    )
-                    .execute()
-                    .get("items", [])
-                )
-                if existing:
-                    return existing[0].get("id")
+                existing_event_id = self.find_appointment_event(booking_reference)
+                if existing_event_id:
+                    return existing_event_id
             except Exception:
                 logger.exception("Could not check Calendar for an existing booking reference")
                 return None
