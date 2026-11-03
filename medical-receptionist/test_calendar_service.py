@@ -221,6 +221,58 @@ class CalendarSlotTests(unittest.TestCase):
         self.assertNotIn("sensitive medical reason", serialized_body)
         self.assertIn("appointment-privacy-123", body["description"])
 
+    def test_booking_reference_uses_deterministic_calendar_event_id(self):
+        clinic_tz = ZoneInfo("Asia/Kolkata")
+        slot_date = date(2098, 12, 30)
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+
+        event_id = service.book_appointment(
+            patient_name="Test Patient",
+            phone="9999999999",
+            start_datetime=datetime.combine(
+                slot_date, datetime.strptime("10:00", "%H:%M").time(), tzinfo=clinic_tz
+            ),
+            reason="idempotency regression",
+            booking_reference="appointment-deterministic-123",
+        )
+
+        expected_id = hashlib.sha256(
+            b"vaidya-appointment:appointment-deterministic-123"
+        ).hexdigest()
+        self.assertEqual(event_id, "created-calendar-event")
+        self.assertEqual(service.service.events_api.last_insert_body["body"]["id"], expected_id)
+        self.assertRegex(expected_id, r"^[0-9a-f]{64}$")
+
+    def test_calendar_insert_conflict_recovers_concurrent_booking_event(self):
+        clinic_tz = ZoneInfo("Asia/Kolkata")
+        slot_date = date(2098, 12, 30)
+        conflict = HttpError(Mock(status=409), b"event ID already exists")
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar(
+            [],
+            insert_error=conflict,
+            items_after_insert_error=[{"id": "concurrent-calendar-event"}],
+        )
+
+        event_id = service.book_appointment(
+            patient_name="Test Patient",
+            phone="9999999999",
+            start_datetime=datetime.combine(
+                slot_date, datetime.strptime("10:00", "%H:%M").time(), tzinfo=clinic_tz
+            ),
+            reason="concurrent retry regression",
+            booking_reference="appointment-concurrent-123",
+        )
+
+        self.assertEqual(event_id, "concurrent-calendar-event")
+        self.assertEqual(
+            service.service.events_api.last_list_query["privateExtendedProperty"],
+            "vaidya_appointment_id=appointment-concurrent-123",
+        )
+
     def test_find_appointment_event_recovers_orphaned_calendar_event(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
         service.calendar_id = "clinic-calendar@example.test"
