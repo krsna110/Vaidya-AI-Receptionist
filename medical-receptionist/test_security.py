@@ -199,6 +199,61 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             db.commit()
             db.close()
 
+    async def test_calendar_cancellation_failure_keeps_appointment_active(self):
+        db = SessionLocal()
+        phone = "+919876543299"
+        appointment_id = None
+        try:
+            db.query(models.Appointment).filter_by(date="2099-04-01", time="10:00").delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            patient = models.Patient(name="Calendar Failure Patient", phone_number=phone)
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            appointment = models.Appointment(
+                patient_id=patient.id,
+                date="2099-04-01",
+                time="10:00",
+                reason="calendar failure regression",
+                description="calendar failure regression",
+                is_confirmed=True,
+                booking_status="confirmed",
+                google_event_id="calendar-event-delete-failure",
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+            appointment_id = appointment.id
+        finally:
+            db.close()
+
+        original_calendar = main_module.calendar_service
+        calendar_mock = Mock()
+        calendar_mock.cancel_appointment.return_value = False
+        main_module.calendar_service = calendar_mock
+        try:
+            token = create_access_token({"sub": "test-admin"})
+            response = await self.client.post(
+                f"/appointments/{appointment_id}/cancel",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            self.assertEqual(response.status_code, 502)
+
+            db = SessionLocal()
+            try:
+                saved = db.query(models.Appointment).filter_by(id=appointment_id).one()
+                self.assertEqual(saved.booking_status, "confirmed")
+                self.assertTrue(saved.is_confirmed)
+            finally:
+                db.close()
+        finally:
+            main_module.calendar_service = original_calendar
+            db = SessionLocal()
+            db.query(models.Appointment).filter_by(id=appointment_id).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+            db.close()
+
     async def test_pending_appointment_without_calendar_event_can_be_cancelled(self):
         db = SessionLocal()
         phone = "+919876543221"
