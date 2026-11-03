@@ -306,8 +306,47 @@ def is_booking_message(message: str, details: dict | None = None) -> bool:
 
 
 def missing_booking_fields(data: dict) -> list[str]:
-    required = ["name", "phone", "date", "time", "reason"]
-    return [field for field in required if not (data.get(field) or "").strip()]
+    """Return required fields that are absent or fail basic booking validation."""
+    missing = [
+        field for field in ["name", "phone", "date", "time", "reason"]
+        if not str(data.get(field) or "").strip()
+    ]
+
+    name = str(data.get("name") or "").strip()
+    if "name" not in missing and len(name) > 100:
+        missing.append("name")
+
+    phone = normalize_phone(str(data.get("phone") or ""))
+    if "phone" not in missing and not re.fullmatch(r"\\+?\\d{8,15}", phone):
+        missing.append("phone")
+
+    date_value = str(data.get("date") or "").strip()
+    if "date" not in missing:
+        try:
+            datetime.strptime(normalize_booking_date(date_value), "%Y-%m-%d")
+        except (ValueError, TypeError):
+            missing.append("date")
+
+    time_value = str(data.get("time") or "").strip()
+    if "time" not in missing and not normalize_booking_time(time_value):
+        missing.append("time")
+
+    reason = str(data.get("reason") or "").strip()
+    if "reason" not in missing and len(reason) > 500:
+        missing.append("reason")
+
+    return missing
+
+
+def booking_prompt_for_missing_field(field: str) -> str:
+    prompts = {
+        "name": "May I have your name please?",
+        "phone": "Could you share a valid contact number?",
+        "date": "What date works best for you?",
+        "time": "What time would you prefer?",
+        "reason": "What is the reason for your visit?",
+    }
+    return prompts.get(field, "Please check your booking details and try again.")
 
 
 def merge_non_empty_booking_data(*sources: dict) -> dict:
@@ -1025,7 +1064,15 @@ async def webhook_receiver(
     # Update conversation state based on intent and current state
     new_state = current_state
 
-    if current_state == "CONFIRM" and is_confirmation_message(message):
+    if (
+        current_state == "CONFIRM"
+        and is_confirmation_message(message)
+        and missing_booking_fields(merged_data)
+    ):
+        missing_fields = missing_booking_fields(merged_data)
+        new_state = "COLLECT_INFO"
+        response_text = booking_prompt_for_missing_field(missing_fields[0])
+    elif current_state == "CONFIRM" and is_confirmation_message(message):
         try:
             appt_id = create_appointment_from_booking_data(db, merged_data)
             if appt_id:
@@ -1075,20 +1122,8 @@ async def webhook_receiver(
         new_state = "INTENT_DETECT"
     elif intent == "BOOKING":
         missing_fields = missing_booking_fields(merged_data)
-        if "name" in missing_fields:
-            response_text = "May I have your name please?"
-            new_state = "COLLECT_INFO"
-        elif "phone" in missing_fields:
-            response_text = "Could you share your contact number?"
-            new_state = "COLLECT_INFO"
-        elif "date" in missing_fields:
-            response_text = "What date works best for you?"
-            new_state = "COLLECT_INFO"
-        elif "time" in missing_fields:
-            response_text = "What time would you prefer?"
-            new_state = "COLLECT_INFO"
-        elif "reason" in missing_fields:
-            response_text = "What is the reason for your visit?"
+        if missing_fields:
+            response_text = booking_prompt_for_missing_field(missing_fields[0])
             new_state = "COLLECT_INFO"
         elif current_state == "COLLECT_INFO" and not missing_fields:
             new_state = "CONFIRM"
