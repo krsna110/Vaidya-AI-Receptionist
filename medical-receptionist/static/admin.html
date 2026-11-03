@@ -1,356 +1,98 @@
-﻿<!DOCTYPE html>
-<html class="dark" lang="en">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vaidya AI Admin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        body {
-            background-color: #051424;
-            color: #d4e4fa;
-            font-family: 'Inter', sans-serif;
-        }
-        .glass-surface {
-            background: rgba(18, 33, 49, 0.72);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .sidebar-glass {
-            background: rgba(13, 28, 45, 0.78);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .active-glow {
-            box-shadow: 0 0 15px rgba(76, 215, 246, 0.2);
-        }
-    </style>
-    <script id="tailwind-config">
-        tailwind.config = {
-          darkMode: "class",
-          theme: {
-            extend: {
-              colors: {
-                      background: "#051424",
-                      surface: "#122131",
-                      "on-surface": "#d4e4fa",
-                      primary: "#4cd7f6",
-                      secondary: "#d0bcff",
-                      "surface-variant": "#273647",
-                      "primary-container": "#06b6d4",
-                      "on-primary-container": "#003640",
-                      outline: "#869397"
-              },
-              borderRadius: {
-                      xl: "0.75rem",
-                      "2xl": "1rem"
-              }
-            },
-          },
-        }
-    </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vaidya AI | Clinic workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#17251f;--muted:#74817a;--line:#e8eee9;--paper:#f7faf7;--white:#fff;--green:#197b58;--green-dark:#116344;--mint:#e8f5ee;--blue:#eaf2fb;--amber:#fff4df;--red:#fff0ed;--shadow:0 12px 35px rgba(27,55,40,.06)}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px "DM Sans",sans-serif}button,input{font:inherit}button{cursor:pointer}.app{min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:248px;background:#fff;border-right:1px solid var(--line);padding:27px 18px;display:flex;flex-direction:column;z-index:5}.brand{display:flex;align-items:center;gap:11px;padding:0 9px 32px}.brand-mark{width:38px;height:38px;border-radius:12px;background:var(--green);color:#fff;display:grid;place-items:center;font:800 19px Manrope}.brand-name{font:800 18px Manrope;letter-spacing:-.6px}.brand-name small{display:block;font:500 10px "DM Sans";color:var(--muted);letter-spacing:1.3px;text-transform:uppercase;margin-top:1px}.nav-label{font-size:10px;font-weight:700;color:#9aa59e;letter-spacing:1.3px;padding:0 12px 10px;text-transform:uppercase}.nav{display:grid;gap:5px}.nav button{display:flex;align-items:center;gap:12px;padding:12px;border:0;border-radius:11px;background:transparent;color:#66736b;text-align:left;font-weight:600}.nav button:hover{background:#f5f8f5;color:var(--ink)}.nav button.active{background:var(--mint);color:var(--green-dark)}.nav-icon{width:19px;text-align:center;font-size:17px}.sidebar-bottom{margin-top:auto;border-top:1px solid var(--line);padding-top:17px}.clinic-card{display:flex;align-items:center;gap:10px;padding:8px}.clinic-avatar{width:34px;height:34px;border-radius:50%;background:#e8f1eb;color:var(--green);display:grid;place-items:center;font-weight:800}.clinic-card strong{display:block;font-size:12px}.clinic-card span{display:block;font-size:11px;color:var(--muted);margin-top:2px}.main{margin-left:248px;min-height:100vh}.topbar{height:76px;background:rgba(255,255,255,.88);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 36px;position:sticky;top:0;z-index:4;backdrop-filter:blur(14px)}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:12px}.status-pill{display:flex;align-items:center;gap:7px;color:var(--green);font-size:12px;font-weight:700;background:var(--mint);border-radius:30px;padding:8px 11px}.dot{width:7px;height:7px;border-radius:50%;background:#25a56f}.avatar{width:36px;height:36px;border-radius:50%;background:#dcebe1;color:var(--green-dark);display:grid;place-items:center;font-weight:800}.content{max-width:1500px;margin:auto;padding:34px 36px 60px}.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:27px}.eyebrow{font-size:11px;color:var(--green);font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:9px}.page-head h1{font:800 29px Manrope;letter-spacing:-1.1px;margin:0}.page-head p{margin:7px 0 0;color:var(--muted)}.primary{border:0;border-radius:10px;background:var(--green);color:#fff;padding:11px 16px;font-weight:700;box-shadow:0 5px 12px rgba(25,123,88,.15)}.primary:hover{background:var(--green-dark)}.secondary{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 13px;color:var(--ink);font-weight:600}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px}.metric,.panel{background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}.metric{padding:19px}.metric-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;font-weight:600}.metric-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--mint);color:var(--green);font-size:16px}.metric strong{display:block;font:800 27px Manrope;margin-top:13px;letter-spacing:-1px}.metric small{display:block;color:var(--muted);margin-top:3px;font-size:11px}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr);gap:17px}.panel{padding:20px;min-width:0}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}.panel-head h2{font:800 15px Manrope;margin:0}.panel-head p{margin:5px 0 0;color:var(--muted);font-size:12px}.text-link{border:0;background:transparent;color:var(--green);font-size:12px;font-weight:700}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;color:#8a968e;font-size:10px;text-transform:uppercase;letter-spacing:.9px;font-weight:700;padding:12px 10px;border-bottom:1px solid var(--line)}td{padding:13px 10px;border-bottom:1px solid #f0f3f0;font-size:12px;color:#4c5b52}tbody tr:last-child td{border-bottom:0}.patient-name{font-weight:700;color:var(--ink)}.subtext{display:block;color:#98a39c;font-size:10px;margin-top:3px}.badge{display:inline-flex;align-items:center;border-radius:20px;padding:5px 8px;font-size:10px;font-weight:700;text-transform:capitalize}.badge.confirmed{background:var(--mint);color:var(--green)}.badge.pending{background:var(--amber);color:#a36a13}.badge.cancelled,.badge.failed{background:var(--red);color:#b44b3e}.badge.other{background:#f0f3f1;color:#68756d}.row-action{border:0;background:#fff1ef;color:#b64b3f;padding:6px 9px;border-radius:7px;font-size:10px;font-weight:700}.conversation-list{display:grid;gap:0}.conversation{width:100%;border:0;border-bottom:1px solid #f0f3f0;background:#fff;text-align:left;padding:13px 2px;display:grid;grid-template-columns:35px 1fr;gap:10px}.conversation:last-child{border:0}.conversation:hover{background:#fbfdfb}.conversation-avatar{width:34px;height:34px;border-radius:50%;background:#e9f2ec;color:var(--green);display:grid;place-items:center;font-weight:800}.conversation strong{font-size:12px}.conversation p{margin:4px 0 0;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}.conversation time{font-size:10px;color:#9aa59e;float:right}.view{display:none}.view.active{display:block}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.search{min-width:220px;flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff;outline:none}.search:focus{border-color:#a9d1b9;box-shadow:0 0 0 3px #e8f5ee}.select{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;color:#526057}.empty{padding:35px;text-align:center;color:var(--muted);font-size:12px}.inbox-layout{display:grid;grid-template-columns:330px minmax(0,1fr);min-height:520px;overflow:hidden}.inbox-list{border-right:1px solid var(--line);padding:15px}.inbox-thread{padding:22px;min-width:0}.thread-head{display:flex;align-items:center;gap:11px;padding-bottom:16px;border-bottom:1px solid var(--line)}.thread-messages{padding:18px 0;display:grid;gap:12px;max-height:420px;overflow:auto}.bubble{max-width:78%;padding:11px 13px;border-radius:13px;background:#f1f5f2;color:#435148;font-size:12px;line-height:1.5}.bubble.patient{justify-self:start;border-bottom-left-radius:4px}.bubble.receptionist{justify-self:end;background:var(--mint);border-bottom-right-radius:4px}.bubble small{display:block;color:#8b988f;font-size:9px;margin-top:6px}.login-overlay{position:fixed;inset:0;background:rgba(21,39,29,.24);backdrop-filter:blur(7px);display:grid;place-items:center;z-index:20;padding:18px}.login-card{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:0 25px 80px rgba(20,50,32,.18)}.login-card h2{font:800 24px Manrope;margin:0}.login-card p{color:var(--muted);font-size:12px;line-height:1.5}.field{display:grid;gap:7px;margin:16px 0}.field label{font-size:11px;font-weight:700;color:#59665e}.field input{border:1px solid var(--line);border-radius:10px;padding:12px;outline:none}.field input:focus{border-color:#9fcbb0}.login-error{color:#b44b3e;font-size:11px;min-height:16px}.toast{position:fixed;right:22px;bottom:22px;background:#193b2b;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow);z-index:30;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translateY(0)}.mobile-brand{display:none}
+@media(max-width:1100px){.metrics{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.content{padding:27px 22px}.topbar{padding:0 22px}}
+@media(max-width:760px){.sidebar{width:68px;padding:18px 9px}.brand{padding:0 5px 26px}.brand-name,.brand small,.nav-label,.nav button span:not(.nav-icon),.clinic-card div:not(.clinic-avatar),.sidebar-bottom .nav-label{display:none}.brand-mark{width:42px;height:42px}.nav button{justify-content:center;padding:13px 5px}.nav-icon{font-size:19px}.clinic-card{justify-content:center;padding:8px 0}.main{margin-left:68px}.topbar{height:64px;padding:0 14px}.content{padding:23px 14px 40px}.page-head{align-items:flex-start;flex-direction:column}.page-head h1{font-size:24px}.metrics{gap:9px}.metric{padding:14px}.metric strong{font-size:23px}.metric-top{font-size:10px}.metric-icon{width:29px;height:29px}.inbox-layout{grid-template-columns:1fr}.inbox-list{border-right:0;border-bottom:1px solid var(--line);max-height:220px;overflow:auto}.inbox-thread{padding:15px}.status-pill{font-size:10px}.crumb{font-size:10px}}
+@media(max-width:420px){.metrics{grid-template-columns:1fr 1fr}.metric small{font-size:9px}.top-actions{gap:7px}.status-pill{padding:7px 8px}.avatar{width:31px;height:31px}}
+</style>
 </head>
-<body class="flex min-h-screen">
-    <div id="loginPanel" class="fixed inset-0 z-[100] flex items-center justify-center bg-background p-4">
-        <form id="loginForm" class="glass-surface w-full max-w-md rounded-2xl p-8 space-y-5">
-            <div>
-                <h1 class="text-2xl font-bold text-on-surface">Admin sign in</h1>
-                <p class="mt-2 text-sm text-on-surface-variant">Use the clinic administrator account configured by your system administrator.</p>
-            </div>
-            <label class="block text-sm text-on-surface-variant">Username
-                <input id="loginUsername" autocomplete="username" required class="mt-2 w-full rounded-xl border border-white/10 bg-surface p-3 text-on-surface" />
-            </label>
-            <label class="block text-sm text-on-surface-variant">Password
-                <input id="loginPassword" type="password" autocomplete="current-password" required class="mt-2 w-full rounded-xl border border-white/10 bg-surface p-3 text-on-surface" />
-            </label>
-            <p id="loginError" role="alert" class="text-sm text-error"></p>
-            <button type="submit" class="w-full rounded-xl bg-primary px-5 py-3 font-bold text-on-primary">Sign in</button>
-        </form>
-    </div>
-    <aside class="fixed left-0 top-0 h-full w-[280px] bg-surface-container-low/70 backdrop-blur-xl border-r border-white/10 shadow-xl flex flex-col p-6 gap-4 z-50 hidden md:flex">
-        <div class="font-headline-lg text-primary mb-8 flex items-center gap-3">
-            <span class="material-symbols-outlined text-4xl">clinical_notes</span>
-            <span class="font-display-lg text-headline-lg">Vaidya AI</span>
-        </div>
-        <nav class="flex-grow space-y-2">
-            <a class="flex items-center gap-4 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold active-glow transition-all duration-200" href="#">
-                <span class="material-symbols-outlined">dashboard</span>
-                <span class="font-body-lg">Dashboard</span>
-            </a>
-            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
-                <span class="material-symbols-outlined">calendar_today</span>
-                <span class="font-body-lg">Appointments</span>
-            </a>
-            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
-                <span class="material-symbols-outlined">person</span>
-                <span class="font-body-lg">Patients</span>
-            </a>
-            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
-                <span class="material-symbols-outlined">analytics</span>
-                <span class="font-body-lg">Analytics</span>
-            </a>
-            <a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl hover:translate-x-1 transition-all duration-200" href="#">
-                <span class="material-symbols-outlined">settings</span>
-                <span class="font-body-lg">Settings</span>
-            </a>
-        </nav>
-        <div class="mt-auto border-t border-white/5 pt-4 space-y-2">
-            <div class="flex items-center gap-3 mb-6 px-4">
-                <div class="relative">
-                    <img alt="Clinic Admin Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80">
-                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-surface"></span>
-                </div>
-                <div>
-                    <p class="font-title-md text-on-surface text-sm">City Clinic</p>
-                    <p class="font-body-sm text-primary text-xs">Online</p>
-                </div>
-            </div>
-            <a class="flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant/50 rounded-xl transition-all" href="#">
-                <span class="material-symbols-outlined">help</span>
-                <span class="font-body-lg">Help</span>
-            </a>
-            <a class="flex items-center gap-4 px-4 py-2 text-error hover:bg-error-container/20 rounded-xl transition-all" href="#">
-                <span class="material-symbols-outlined">logout</span>
-                <span class="font-body-lg">Logout</span>
-            </a>
-        </div>
-    </aside>
-    <main class="flex-grow md:ml-[280px] p-4 md:p-8 pb-24 bg-background">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-on-surface">Clinic Overview</h1>
-                <p class="text-on-surface-variant mt-1">Real-time operational insights</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <button class="bg-surface-variant/50 p-3 rounded-2xl text-primary hover:bg-surface-variant transition"> 
-                    <span class="material-symbols-outlined">language</span>
-                </button>
-                <button class="bg-primary px-6 py-3 rounded-2xl text-on-primary font-bold shadow-lg hover:brightness-110 transition">+ New Appointment</button>
-            </div>
-        </header>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="glass-surface p-6 rounded-2xl">
-                <div class="flex justify-between items-start mb-4">
-                    <span class="material-symbols-outlined text-primary">event_available</span>
-                    <span class="text-primary font-bold text-xs bg-primary/10 px-2 py-1 rounded-full">↑12%</span>
-                </div>
-                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Total Appointments</p>
-                <h2 class="text-3xl font-bold">24</h2>
-            </div>
-            <div class="glass-surface p-6 rounded-2xl">
-                <div class="flex justify-between items-start mb-4">
-                    <span class="material-symbols-outlined text-secondary">forum</span>
-                    <span class="text-secondary font-bold text-xs bg-secondary/10 px-2 py-1 rounded-full">Live</span>
-                </div>
-                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Active Conversations</p>
-                <h2 class="text-3xl font-bold">5</h2>
-            </div>
-            <div class="glass-surface p-6 rounded-2xl">
-                <div class="flex justify-between items-start mb-4">
-                    <span class="material-symbols-outlined text-error">cancel</span>
-                    <span class="text-error font-bold text-xs bg-error/10 px-2 py-1 rounded-full">-2</span>
-                </div>
-                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">Cancellations</p>
-                <h2 class="text-3xl font-bold">2</h2>
-            </div>
-            <div class="glass-surface p-6 rounded-2xl border border-primary/20">
-                <div class="flex justify-between items-start mb-4">
-                    <span class="material-symbols-outlined text-primary">psychology</span>
-                    <span class="text-primary-container font-bold text-xs bg-primary-container/20 px-2 py-1 rounded-full">Optimal</span>
-                </div>
-                <p class="text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">AI Confidence</p>
-                <h2 class="text-3xl font-bold text-primary">98%</h2>
-            </div>
-        </div>
-        <div class="grid grid-cols-1 xl:grid-cols-[1.8fr_1.2fr] gap-6">
-            <section class="glass-surface rounded-2xl p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 class="text-xl font-semibold text-on-surface">Appointments</h2>
-                        <p class="text-on-surface-variant text-sm">Current appointment list with cancel actions.</p>
-                    </div>
-                    <button id="refreshAppointmentsBtn" class="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm hover:bg-primary/20 transition">Refresh</button>
-                </div>
-                <div class="overflow-x-auto rounded-xl border border-white/10">
-                    <table id="appointmentsTable" class="min-w-full text-left text-sm text-on-surface">
-                        <thead class="bg-surface-variant/70 text-on-surface-variant text-[11px] uppercase tracking-[0.16em]">
-                            <tr>
-                                <th class="px-4 py-3">ID</th>
-                                <th class="px-4 py-3">Patient</th>
-                                <th class="px-4 py-3">Date</th>
-                                <th class="px-4 py-3">Time</th>
-                                <th class="px-4 py-3">Reason</th>
-                                <th class="px-4 py-3">Confirmed</th>
-                                <th class="px-4 py-3">Google Event</th>
-                                <th class="px-4 py-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-white/10"></tbody>
-                    </table>
-                </div>
-            </section>
-            <section class="glass-surface rounded-2xl p-6 flex flex-col">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 class="text-xl font-semibold text-on-surface">Patients</h2>
-                        <p class="text-on-surface-variant text-sm">Latest patient records loaded from the backend.</p>
-                    </div>
-                    <button id="refreshPatientsBtn" class="bg-primary/10 text-primary px-4 py-2 rounded-full text-sm hover:bg-primary/20 transition">Refresh</button>
-                </div>
-                <div class="overflow-x-auto rounded-xl border border-white/10 flex-1">
-                    <table id="patientsTable" class="min-w-full text-left text-sm text-on-surface">
-                        <thead class="bg-surface-variant/70 text-on-surface-variant text-[11px] uppercase tracking-[0.16em]">
-                            <tr>
-                                <th class="px-4 py-3">ID</th>
-                                <th class="px-4 py-3">Name</th>
-                                <th class="px-4 py-3">Phone</th>
-                                <th class="px-4 py-3">Email</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-white/10"></tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-    </main>
-    <script>
-        let jwtToken = null;
-        const statusEl = document.createElement('div');
-        statusEl.className = 'fixed top-20 right-6 text-sm text-on-surface-variant bg-surface/80 backdrop-blur-md border border-white/10 rounded-full px-4 py-2 shadow-lg';
-        statusEl.textContent = 'Connecting...';
-        document.body.appendChild(statusEl);
-
-        const appointmentsBody = document.querySelector('#appointmentsTable tbody');
-        const patientsBody = document.querySelector('#patientsTable tbody');
-
-        async function authenticate(username, password) {
-            const response = await fetch('/auth/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ username, password }).toString()
-            });
-            if (!response.ok) throw new Error(response.status === 401 ? 'Invalid username or password.' : 'Sign-in failed.');
-            const data = await response.json();
-            jwtToken = data.access_token;
-        }
-
-        async function apiGet(url) {
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${jwtToken}` }
-            });
-            if (!response.ok) throw new Error(`${url} failed (${response.status})`);
-            return response.json();
-        }
-
-        async function apiPost(url, payload) {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${jwtToken}`
-                },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) throw new Error(`${url} failed (${response.status})`);
-            return response.json();
-        }
-
-        function renderAppointments(rows) {
-            appointmentsBody.replaceChildren();
-            rows.forEach((item) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-white/5 transition-colors';
-                const values = [
-                    item.id, item.patient_id, item.date, item.time, item.reason ?? item.description,
-                    item.is_confirmed ? 'Yes' : 'No', item.google_event_id
-                ];
-                values.forEach((value) => {
-                    const td = document.createElement('td');
-                    td.className = 'px-4 py-3';
-                    td.textContent = value == null ? '' : String(value);
-                    tr.appendChild(td);
-                });
-                const actionCell = document.createElement('td');
-                actionCell.className = 'px-4 py-3';
-                const button = document.createElement('button');
-                button.className = 'bg-error/10 text-error text-xs px-3 py-1 rounded-full';
-                button.dataset.cancelId = String(item.id);
-                button.textContent = 'Cancel';
-                actionCell.appendChild(button);
-                tr.appendChild(actionCell);
-                appointmentsBody.appendChild(tr);
-            });
-            appointmentsBody.querySelectorAll('button[data-cancel-id]').forEach((btn) => {
-                btn.addEventListener('click', async () => {
-                    const id = btn.getAttribute('data-cancel-id');
-                    try {
-                        statusEl.textContent = `Cancelling appointment ${id}...`;
-                        await apiPost(`/appointments/${encodeURIComponent(id)}/cancel`, {});
-                        await loadAppointments();
-                        statusEl.textContent = `Cancelled appointment ${id}`;
-                    } catch (err) {
-                        statusEl.textContent = `Cancel failed: ${err.message}`;
-                    }
-                });
-            });
-        }
-
-        function renderPatients(rows) {
-            patientsBody.replaceChildren();
-            rows.forEach((item) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-white/5 transition-colors';
-                [item.id, item.name, item.phone_number, item.email].forEach((value) => {
-                    const td = document.createElement('td');
-                    td.className = 'px-4 py-3';
-                    td.textContent = value == null ? '' : String(value);
-                    tr.appendChild(td);
-                });
-                patientsBody.appendChild(tr);
-            });
-        }
-
-        async function loadAppointments() {
-            const data = await apiGet('/appointments');
-            renderAppointments(Array.isArray(data) ? data : []);
-        }
-
-        async function loadPatients() {
-            const data = await apiGet('/patients');
-            renderPatients(Array.isArray(data) ? data : []);
-        }
-
-        async function refreshAll() {
-            statusEl.textContent = 'Refreshing data...';
-            await Promise.all([loadAppointments(), loadPatients()]);
-            statusEl.textContent = `Updated at ${new Date().toLocaleTimeString()}`;
-        }
-
-        document.getElementById('refreshAppointmentsBtn').addEventListener('click', loadAppointments);
-        document.getElementById('refreshPatientsBtn').addEventListener('click', loadPatients);
-
-        document.getElementById('loginForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const errorEl = document.getElementById('loginError');
-            errorEl.textContent = '';
-            try {
-                await authenticate(
-                    document.getElementById('loginUsername').value.trim(),
-                    document.getElementById('loginPassword').value
-                );
-                document.getElementById('loginPassword').value = '';
-                document.getElementById('loginPanel').remove();
-                statusEl.textContent = 'Signed in. Loading clinic data...';
-                await refreshAll();
-            } catch (err) {
-                errorEl.textContent = err.message;
-            }
-        });
-    </script>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">V</div><div class="brand-name">vaidya ai<small>clinic workspace</small></div></div>
+  <div class="nav-label">Workspace</div>
+  <nav class="nav">
+    <button class="active" data-view="overview"><span class="nav-icon">⌂</span><span>Overview</span></button>
+    <button data-view="appointments"><span class="nav-icon">▦</span><span>Appointments</span></button>
+    <button data-view="patients"><span class="nav-icon">♙</span><span>Patients</span></button>
+    <button data-view="inbox"><span class="nav-icon">▤</span><span>Conversation inbox</span></button>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="nav-label">Clinic</div>
+    <div class="clinic-card"><div class="clinic-avatar">VC</div><div><strong>Vaidya Clinic</strong><span>Reception workspace</span></div></div>
+    <nav class="nav"><button id="logoutBtn"><span class="nav-icon">↪</span><span>Sign out</span></button></nav>
+  </div>
+</aside>
+<main class="main">
+  <header class="topbar"><div class="crumb">Workspace <span style="color:#b8c2bb">/</span> <strong id="crumbName" style="color:#33443a">Overview</strong></div><div class="top-actions"><div class="status-pill"><span class="dot"></span> System connected</div><div class="avatar" id="userAvatar">A</div></div></header>
+  <div class="content">
+    <section class="view active" id="view-overview">
+      <div class="page-head"><div><div class="eyebrow">Tuesday · Clinic workspace</div><h1>Good day, Admin</h1><p>Here is what is happening at your clinic today.</p></div><a class="primary" href="/chat" style="text-decoration:none">Open patient chat ↗</a></div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-top"><span>Total appointments</span><span class="metric-icon">▦</span></div><strong id="metricTotal">—</strong><small>All recorded bookings</small></div>
+        <div class="metric"><div class="metric-top"><span>Confirmed</span><span class="metric-icon">✓</span></div><strong id="metricConfirmed">—</strong><small>Calendar-confirmed bookings</small></div>
+        <div class="metric"><div class="metric-top"><span>Pending review</span><span class="metric-icon">◷</span></div><strong id="metricPending">—</strong><small>Awaiting confirmation or action</small></div>
+        <div class="metric"><div class="metric-top"><span>Registered patients</span><span class="metric-icon">♙</span></div><strong id="metricPatients">—</strong><small>Patient records in your clinic</small></div>
+      </div>
+      <div class="dashboard-grid">
+        <section class="panel"><div class="panel-head"><div><h2>Recent appointments</h2><p>Latest bookings from your clinic database</p></div><button class="text-link" data-jump="appointments">View all →</button></div><div class="table-wrap"><table><thead><tr><th>Patient</th><th>Date & time</th><th>Reason</th><th>Status</th></tr></thead><tbody id="recentAppointments"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Recent conversations</h2><p>Latest patient messages</p></div><button class="text-link" data-jump="inbox">Open inbox →</button></div><div class="conversation-list" id="recentConversations"><div class="empty">Loading conversations…</div></div></section>
+      </div>
+    </section>
+    <section class="view" id="view-appointments">
+      <div class="page-head"><div><div class="eyebrow">Clinic operations</div><h1>Appointments</h1><p>Review bookings and manage cancellations.</p></div><a class="primary" href="/chat" style="text-decoration:none">New patient booking ↗</a></div>
+      <div class="panel"><div class="toolbar"><input class="search" id="appointmentSearch" placeholder="Search patient, reason or appointment ID"><select class="select" id="appointmentFilter"><option value="all">All statuses</option><option value="confirmed">Confirmed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option><option value="failed">Failed</option></select><button class="secondary" id="refreshAppointments">Refresh</button></div><div class="table-wrap"><table><thead><tr><th>Appointment</th><th>Patient ID</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Calendar</th><th>Action</th></tr></thead><tbody id="appointmentsBody"></tbody></table></div></div>
+    </section>
+    <section class="view" id="view-patients">
+      <div class="page-head"><div><div class="eyebrow">Patient directory</div><h1>Patients</h1><p>Patient records currently stored in the clinic database.</p></div><button class="secondary" id="refreshPatients">Refresh records</button></div>
+      <div class="panel"><div class="toolbar"><input class="search" id="patientSearch" placeholder="Search by name, phone or email"></div><div class="table-wrap"><table><thead><tr><th>Patient</th><th>Phone number</th><th>Email</th><th>Patient ID</th></tr></thead><tbody id="patientsBody"></tbody></table></div></div>
+    </section>
+    <section class="view" id="view-inbox">
+      <div class="page-head"><div><div class="eyebrow">Patient support</div><h1>Conversation inbox</h1><p>Review recent conversations handled by Vaidya AI.</p></div><button class="secondary" id="refreshInbox">Refresh inbox</button></div>
+      <div class="panel inbox-layout" style="padding:0"><div class="inbox-list"><input class="search" id="conversationSearch" placeholder="Search conversations"><div id="conversationList" class="conversation-list" style="margin-top:10px"><div class="empty">Loading conversations…</div></div></div><div class="inbox-thread" id="threadPanel"><div class="empty" style="padding-top:150px">Select a conversation to review its messages.</div></div></div>
+    </section>
+  </div>
+</main>
+</div>
+<div class="login-overlay" id="loginOverlay"><form class="login-card" id="loginForm"><div class="brand" style="padding:0 0 20px"><div class="brand-mark">V</div><div class="brand-name">vaidya ai<small>clinic workspace</small></div></div><h2>Welcome back</h2><p>Sign in with your clinic administrator account to access appointments, patient records and conversations.</p><div class="field"><label for="loginUsername">USERNAME</label><input id="loginUsername" autocomplete="username" required></div><div class="field"><label for="loginPassword">PASSWORD</label><input id="loginPassword" type="password" autocomplete="current-password" required></div><div class="login-error" id="loginError" role="alert"></div><button class="primary" style="width:100%;padding:13px" type="submit">Sign in to workspace</button></form></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+let token=null,appointments=[],patients=[],conversations=[];
+const $=id=>document.getElementById(id);
+const escapeHtml=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+function toast(message){$("toast").textContent=message;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),2600)}
+async function request(url,options={}){const headers={...(options.headers||{})};if(token)headers.Authorization="Bearer "+token;if(options.body)headers["Content-Type"]="application/json";const response=await fetch(url,{...options,headers});if(!response.ok){let detail="Request failed ("+response.status+")";try{const body=await response.json();detail=body.detail||detail}catch{}throw new Error(detail)}return response.status===204?null:response.json()}
+async function signIn(username,password){const response=await fetch("/auth/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({username,password})});if(!response.ok)throw new Error(response.status===401?"Incorrect username or password.":"Sign-in failed. Please try again.");const data=await response.json();token=data.access_token;sessionStorage.setItem("vaidya_admin_token",token)}
+function statusOf(item){return String(item.booking_status|| (item.is_confirmed?"confirmed":"pending")).toLowerCase()}
+function badge(status){const safe=["confirmed","pending","cancelled","failed"].includes(status)?status:"other";return '<span class="badge '+safe+'">'+escapeHtml(status)+'</span>'}
+function renderRecent(){const rows=[...appointments].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,6);$("recentAppointments").innerHTML=rows.length?rows.map(item=>'<tr><td><span class="patient-name">Patient #'+escapeHtml(item.patient_id||"—")+'</span><span class="subtext">Appointment #'+escapeHtml(item.id)+'</span></td><td>'+escapeHtml(item.date||"—")+'<span class="subtext">'+escapeHtml(item.time||"")+'</span></td><td>'+escapeHtml(item.reason||item.description||"—")+'</td><td>'+badge(statusOf(item))+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">No appointments found.</td></tr>'}
+function renderMetrics(){$("metricTotal").textContent=appointments.length;$("metricConfirmed").textContent=appointments.filter(x=>statusOf(x)==="confirmed"||x.is_confirmed).length;$("metricPending").textContent=appointments.filter(x=>["pending","failed"].includes(statusOf(x))).length;$("metricPatients").textContent=patients.length}
+function renderAppointments(){const query=$("appointmentSearch").value.toLowerCase(),filter=$("appointmentFilter").value;const rows=appointments.filter(x=>{const status=statusOf(x);const hay=[x.id,x.patient_id,x.date,x.time,x.reason,x.description].join(" ").toLowerCase();return (!query||hay.includes(query))&&(filter==="all"||status===filter)});$("appointmentsBody").innerHTML=rows.length?rows.map(item=>{const status=statusOf(item);return '<tr><td><span class="patient-name">#'+escapeHtml(item.id)+'</span></td><td>'+escapeHtml(item.patient_id||"—")+'</td><td>'+escapeHtml(item.date||"—")+'</td><td>'+escapeHtml(item.time||"—")+'</td><td>'+escapeHtml(item.reason||item.description||"—")+'</td><td>'+badge(status)+'</td><td>'+(item.google_event_id?'<span class="badge confirmed">Synced</span>':'<span class="badge other">Not linked</span>')+'</td><td>'+(status==="cancelled"?'—':'<button class="row-action" data-cancel="'+escapeHtml(item.id)+'">Cancel</button>')+'</td></tr>'}).join(""):'<tr><td colspan="8" class="empty">No appointments match this filter.</td></tr>'}
+function renderPatients(){const query=$("patientSearch").value.toLowerCase();const rows=patients.filter(x=>[x.name,x.phone_number,x.email,x.id].join(" ").toLowerCase().includes(query));$("patientsBody").innerHTML=rows.length?rows.map(item=>'<tr><td><span class="patient-name">'+escapeHtml(item.name||"Unnamed patient")+'</span></td><td>'+escapeHtml(item.phone_number||"—")+'</td><td>'+escapeHtml(item.email||"—")+'</td><td>#'+escapeHtml(item.id)+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">No patient records found.</td></tr>'}
+function renderConversationSummary(item){const last=item.last_message||item.messages?.[0]?.message||"No messages";const name=item.patient_name||("Patient "+String(item.session_id||"").slice(0,8));return '<button class="conversation" data-session="'+escapeHtml(item.session_id)+'"><span class="conversation-avatar">'+escapeHtml((name[0]||"P").toUpperCase())+'</span><span><time>'+escapeHtml(item.updated_at?new Date(item.updated_at).toLocaleDateString():"")+'</time><strong>'+escapeHtml(name)+'</strong><p>'+escapeHtml(last)+'</p></span></button>'}
+function renderConversationLists(){$("recentConversations").innerHTML=conversations.length?conversations.slice(0,5).map(renderConversationSummary).join(""):'<div class="empty">No saved conversations yet.</div>';const q=$("conversationSearch").value.toLowerCase();const rows=conversations.filter(x=>(x.patient_name||x.session_id||"").toLowerCase().includes(q)||(x.last_message||"").toLowerCase().includes(q));$("conversationList").innerHTML=rows.length?rows.map(renderConversationSummary).join(""):'<div class="empty">No matching conversations.</div>'}
+function openThread(session){const item=conversations.find(x=>x.session_id===session);if(!item)return;const name=item.patient_name||("Patient "+String(session).slice(0,8));$("threadPanel").innerHTML='<div class="thread-head"><span class="conversation-avatar">'+escapeHtml((name[0]||"P").toUpperCase())+'</span><div><strong>'+escapeHtml(name)+'</strong><div class="subtext">Session '+escapeHtml(String(session).slice(0,12))+'… · Read-only history</div></div></div><div class="thread-messages">'+(item.messages||[]).slice().reverse().map(msg=>{const sender=(msg.sender||"").toLowerCase();const patient=sender==="patient"||sender==="user";return '<div class="bubble '+(patient?"patient":"receptionist")+'">'+escapeHtml(msg.message)+'<small>'+escapeHtml(sender==="patient"||sender==="user"?"Patient":"Receptionist")+" · "+escapeHtml(msg.timestamp?new Date(msg.timestamp).toLocaleString():"")+'</small></div>'}).join("")+'</div>'}
+async function loadAll(){const [a,p,c]=await Promise.all([request("/appointments"),request("/patients"),request("/admin/conversations")]);appointments=Array.isArray(a)?a:[];patients=Array.isArray(p)?p:[];conversations=Array.isArray(c)?c:[];renderMetrics();renderRecent();renderAppointments();renderPatients();renderConversationLists()}
+function setView(name){document.querySelectorAll(".view").forEach(el=>el.classList.toggle("active",el.id==="view-"+name));document.querySelectorAll(".nav button[data-view]").forEach(el=>el.classList.toggle("active",el.dataset.view===name));$("crumbName").textContent=({overview:"Overview",appointments:"Appointments",patients:"Patients",inbox:"Conversation inbox"})[name]||name}
+document.querySelectorAll(".nav button[data-view]").forEach(btn=>btn.addEventListener("click",()=>setView(btn.dataset.view)));
+document.querySelectorAll("[data-jump]").forEach(btn=>btn.addEventListener("click",()=>setView(btn.dataset.jump)));
+$("loginForm").addEventListener("submit",async event=>{event.preventDefault();$("loginError").textContent="";try{await signIn($("loginUsername").value.trim(),$("loginPassword").value);$("loginOverlay").style.display="none";await loadAll();toast("Workspace connected")}catch(error){$("loginError").textContent=error.message}});
+$("logoutBtn").addEventListener("click",()=>{token=null;sessionStorage.removeItem("vaidya_admin_token");$("loginOverlay").style.display="grid";$("loginPassword").value=""});
+$("refreshAppointments").addEventListener("click",async()=>{try{appointments=await request("/appointments");renderAppointments();renderMetrics();renderRecent();toast("Appointments refreshed")}catch(e){toast(e.message)}});
+$("refreshPatients").addEventListener("click",async()=>{try{patients=await request("/patients");renderPatients();renderMetrics();toast("Patients refreshed")}catch(e){toast(e.message)}});
+$("refreshInbox").addEventListener("click",async()=>{try{conversations=await request("/admin/conversations");renderConversationLists();toast("Inbox refreshed")}catch(e){toast(e.message)}});
+$("appointmentSearch").addEventListener("input",renderAppointments);$("appointmentFilter").addEventListener("change",renderAppointments);$("patientSearch").addEventListener("input",renderPatients);$("conversationSearch").addEventListener("input",renderConversationLists);
+document.addEventListener("click",async event=>{const cancel=event.target.closest("[data-cancel]");if(cancel){const id=cancel.dataset.cancel;if(!confirm("Cancel appointment #"+id+"? This will also attempt to cancel its calendar event."))return;cancel.disabled=true;try{await request("/appointments/"+encodeURIComponent(id)+"/cancel",{method:"POST",body:"{}"});appointments=await request("/appointments");renderAppointments();renderMetrics();renderRecent();toast("Appointment cancelled")}catch(error){toast(error.message);cancel.disabled=false}return}const thread=event.target.closest("[data-session]");if(thread){openThread(thread.dataset.session)}});
+(async()=>{const saved=sessionStorage.getItem("vaidya_admin_token");if(!saved)return;token=saved;try{await loadAll();$("loginOverlay").style.display="none"}catch(error){token=null;sessionStorage.removeItem("vaidya_admin_token");$("loginError").textContent="Please sign in again."}})();
+</script>
 </body>
 </html>
