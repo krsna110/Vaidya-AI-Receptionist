@@ -20,6 +20,7 @@ from main import (
     parse_conversation_state_data,
     sync_appointment_to_google_calendar,
     upsert_patient_from_data,
+    initialize_database_schema,
 )
 from database import SessionLocal
 import models
@@ -27,6 +28,14 @@ from state import StateManager, ConversationState
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_production_schema_is_managed_by_alembic_not_create_all(self):
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
+            with patch("main.Base.metadata.create_all") as create_all:
+                self.assertFalse(initialize_database_schema())
+                create_all.assert_not_called()
+
     def test_calendar_sync_recovers_orphan_event_before_slot_availability_check(self):
         from types import SimpleNamespace
         from unittest.mock import Mock, patch
