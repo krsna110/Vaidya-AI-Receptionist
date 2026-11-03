@@ -835,8 +835,12 @@ scheduler_instance = Scheduler()
 
 @app.on_event("startup")
 async def startup_event():
-    scheduler_instance.start()
-    logger.info("Scheduler started on startup.")
+    scheduler_enabled = os.getenv("ENABLE_SCHEDULER", "true").strip().lower() in {"1", "true", "yes"}
+    if scheduler_enabled:
+        scheduler_instance.start()
+        logger.info("Scheduler started on startup.")
+    else:
+        logger.info("Scheduler startup disabled by ENABLE_SCHEDULER.")
 
 
 @app.on_event("shutdown")
