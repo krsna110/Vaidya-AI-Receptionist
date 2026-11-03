@@ -250,6 +250,14 @@ class GoogleCalendarService:
 
         end_datetime = start_datetime + datetime.timedelta(minutes=duration)
 
+        # Enforce clinic hours, holidays, breaks, and Calendar conflicts here as
+        # well as in the API orchestration layer. Callers must not be able to
+        # bypass slot validation by invoking this service directly.
+        available_slots = self.get_available_slots(start_datetime.date(), duration)
+        if start_datetime.strftime("%H:%M") not in available_slots:
+            logger.warning("Calendar booking rejected because the requested slot is unavailable")
+            return None
+
         # Recover an event created before a process crash or DB commit failure.
         # The private property contains only the internal appointment ID, not PHI.
         if booking_reference:
