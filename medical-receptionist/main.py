@@ -907,7 +907,7 @@ async def webhook_receiver(
             "session_id": user_id,
         }
 
-    name_intro_match = re.search(r"\\bmy name is\\s+([a-z][a-z ]{0,40})", message, re.IGNORECASE)
+    name_intro_match = re.search(r"\bmy name is\s+([a-z][a-z ]{0,40})", message, re.IGNORECASE)
     # During an active booking, let the normal extraction/collection pipeline
     # handle this message so it cannot interrupt the booking state machine.
     if name_intro_match and current_state not in {"COLLECT_INFO", "SUGGEST_SLOT", "CONFIRM", "BOOKING"}:
