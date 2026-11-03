@@ -28,7 +28,7 @@ class BookingConfirmationApiTests(unittest.IsolatedAsyncioTestCase):
         )
         suffix = uuid.uuid4().hex
         self.session_id = f"booking-confirm-{suffix}"
-        self.phone = "9" + suffix[:9]
+        self.phone = "9" + str(uuid.uuid4().int)[:9]
         self.booking = {
             "name": "Local Test Patient",
             "phone": self.phone,
