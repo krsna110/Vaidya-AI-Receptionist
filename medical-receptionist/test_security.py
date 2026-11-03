@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import unittest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from datetime import datetime, timezone
 
 import httpx
@@ -473,7 +473,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         response.json.return_value = {"success": True}
         client = Mock()
         client.post = AsyncMock(return_value=response)
-        context = Mock()
+        context = MagicMock()
         context.__aenter__ = AsyncMock(return_value=client)
         context.__aexit__ = AsyncMock(return_value=False)
         request = SimpleNamespace(
