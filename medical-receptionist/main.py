@@ -422,6 +422,22 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
         .first()
     )
     if existing:
+        # Failed reservations are reusable for retries, but must reclaim the
+        # unique active slot before another patient can take it.
+        if existing.booking_status == "failed":
+            existing.booking_status = "pending"
+            existing.is_confirmed = False
+            db.add(existing)
+            try:
+                db.commit()
+                db.refresh(existing)
+            except Exception:
+                db.rollback()
+                logger.warning(
+                    "Failed reservation could not reclaim its slot | appointment_id=%s",
+                    existing.id,
+                )
+                return None
         return existing.id
 
     # Prevent double-booking same slot (active confirmed appointment at same date+time).
