@@ -22,12 +22,14 @@ class FakeEvents:
         self.items = events
         self.delete_error = delete_error
         self.last_query = None
+        self.last_list_query = None
         self.last_deleted_event_id = None
         self.operation = "list"
 
     def list(self, **kwargs):
         self.operation = "list"
         self.last_query = kwargs
+        self.last_list_query = kwargs
         return self
 
     def delete(self, **kwargs):
@@ -80,7 +82,7 @@ class CalendarSlotTests(unittest.TestCase):
 
         self.assertTrue(service.cancel_appointment_by_reference("appointment-456"))
         self.assertEqual(
-            service.service.events_api.last_query["privateExtendedProperty"],
+            service.service.events_api.last_list_query["privateExtendedProperty"],
             "vaidya_appointment_id=appointment-456",
         )
         self.assertEqual(
