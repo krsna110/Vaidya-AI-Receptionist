@@ -334,6 +334,32 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             db.commit()
             db.close()
 
+    async def test_public_chat_does_not_claim_to_cancel_or_reschedule_appointments(self):
+        session_id = "cancel-reschedule-safety-test"
+        original_generate = main_module.agent.generate_response
+        original_extract = main_module.agent.extract_patient_data
+        original_limiter = main_module.limiter.enabled
+        main_module.state_manager.set_state(session_id, "BOOKED", {"appointment_id": 123})
+        main_module.agent.generate_response = Mock(return_value={
+            "intent": "CANCEL", "response": "Your appointment has been cancelled.",
+            "data": {}, "confidence": 0.9, "language": "en",
+        })
+        main_module.agent.extract_patient_data = Mock(return_value={})
+        main_module.limiter.enabled = False
+        try:
+            for message in ("Please cancel my appointment", "Please reschedule my appointment"):
+                response = await self.client.post(
+                    "/chat", json={"session_id": session_id, "message": message}
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("contact clinic staff directly", response.json()["response"])
+                self.assertNotIn("has been cancelled", response.json()["response"])
+        finally:
+            main_module.agent.generate_response = original_generate
+            main_module.agent.extract_patient_data = original_extract
+            main_module.limiter.enabled = original_limiter
+            main_module.state_manager.reset_state(session_id)
+
     async def test_booking_history_stores_the_final_confirmation_response(self):
         session_id = "final-response-history-test"
         phone = "+919876543239"
