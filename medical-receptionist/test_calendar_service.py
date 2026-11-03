@@ -1,6 +1,7 @@
 """Calendar slot calculations tested without Google credentials or network access."""
 import os
 import json
+import hashlib
 import unittest
 from datetime import date, datetime, timedelta
 from unittest.mock import Mock
