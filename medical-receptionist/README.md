@@ -1,6 +1,6 @@
 # Medical AI Receptionist
 
-This project implements an AI-powered medical receptionist system designed to assist patients with appointment booking, answering frequently asked questions, and managing cancellations for a dental/medical clinic.
+This project implements an AI-powered medical receptionist system designed to assist patients with appointment booking and clinic FAQs, with admin-managed appointment cancellation for a dental/medical clinic.
 
 ## Tech Stack
 
@@ -142,7 +142,7 @@ Open your web browser and navigate to:
 http://127.0.0.1:8000/chat
 ```
 
-The chat UI can start a conversation with the AI receptionist. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
+The chat UI can start a conversation with the AI receptionist. Existing appointment cancellation and rescheduling are not self-service in public chat because patient identity verification is not implemented; the assistant directs patients to clinic staff instead of claiming to change a booking. Admin cancellation is available through the authenticated API. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
 
 ### 9. Test with Swagger UI (API Documentation)
 
