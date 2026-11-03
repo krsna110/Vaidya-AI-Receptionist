@@ -317,7 +317,7 @@ def missing_booking_fields(data: dict) -> list[str]:
         missing.append("name")
 
     phone = normalize_phone(str(data.get("phone") or ""))
-    if "phone" not in missing and not re.fullmatch(r"\\+?\\d{8,15}", phone):
+    if "phone" not in missing and not re.fullmatch(r"\+?\d{8,15}", phone):
         missing.append("phone")
 
     date_value = str(data.get("date") or "").strip()
