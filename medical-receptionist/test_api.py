@@ -21,9 +21,24 @@ from main import (
 )
 from database import SessionLocal
 import models
+from state import StateManager, ConversationState
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_state_manager_recovers_from_malformed_persisted_json(self):
+        user_id = "malformed-state-recovery-test"
+        manager = StateManager()
+        try:
+            existing = manager.get_state(user_id)
+            existing.data = "not-json"
+            manager.db.commit()
+            updated = manager.set_state(user_id, "COLLECT_INFO", {"name": "Rahul"})
+            self.assertEqual(__import__("json").loads(updated.data), {"name": "Rahul"})
+        finally:
+            manager.db.query(ConversationState).filter_by(user_id=user_id).delete()
+            manager.db.commit()
+            manager.close()
+
     def test_conversation_state_json_is_decoded_safely(self):
         self.assertEqual(parse_conversation_state_data('{"name": "Rahul"}'), {"name": "Rahul"})
         self.assertEqual(parse_conversation_state_data({"name": "Rahul"}), {"name": "Rahul"})
