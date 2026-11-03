@@ -5,7 +5,7 @@ services:
     rootDir: medical-receptionist
     buildCommand: pip install -r requirements.txt
     startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    healthCheckPath: /ready
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -21,6 +21,8 @@ services:
         sync: false
       - key: RATE_LIMIT_STORAGE_URI
         sync: false
+      - key: ENABLE_SCHEDULER
+        value: "true"
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
@@ -35,6 +37,10 @@ services:
         generateValue: true
       - key: ALLOW_UNAUTHENTICATED_WEBHOOK
         value: "false"
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
       - key: CLINIC_NAME
         sync: false
       - key: CLINIC_ADDRESS
