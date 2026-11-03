@@ -130,12 +130,16 @@ class GoogleCalendarService:
                 break_end = datetime.datetime.strptime(end_text.strip(), "%H:%M").time()
                 if break_start >= break_end:
                     raise ValueError("Each clinic break must end after it starts")
-                if break_start < datetime.time(start_hour) or break_end > datetime.time(end_hour):
+                if break_start < datetime.time(start_hour) or (
+                    end_hour < 24 and break_end > datetime.time(end_hour)
+                ):
                     raise ValueError("Clinic breaks must fall within clinic opening hours")
                 breaks.append((break_start, break_end))
 
             day_start = datetime.datetime.combine(date, datetime.time(start_hour), tzinfo=clinic_tz)
-            day_end = datetime.datetime.combine(date, datetime.time(end_hour), tzinfo=clinic_tz)
+            day_end_date = date + datetime.timedelta(days=1) if end_hour == 24 else date
+            day_end_time = datetime.time.min if end_hour == 24 else datetime.time(end_hour)
+            day_end = datetime.datetime.combine(day_end_date, day_end_time, tzinfo=clinic_tz)
             now = datetime.datetime.now(clinic_tz)
             if date < now.date():
                 return []
