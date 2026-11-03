@@ -296,6 +296,28 @@ class BookingHelperTests(unittest.TestCase):
         self.assertEqual(details.get("phone"), "9876543210")
         self.assertEqual(set(missing_booking_fields({})), {"name", "phone", "date", "time", "reason"})
 
+    def test_incomplete_or_invalid_booking_details_are_reported(self):
+        valid = {
+            "name": "Test Patient",
+            "phone": "+919876543210",
+            "date": "2099-03-05",
+            "time": "11:00",
+            "reason": "routine checkup",
+        }
+        self.assertEqual(missing_booking_fields(valid), [])
+
+        invalid_phone = {**valid, "phone": "not-a-phone"}
+        self.assertEqual(missing_booking_fields(invalid_phone), ["phone"])
+
+        invalid_date = {**valid, "date": "not-a-date"}
+        self.assertEqual(missing_booking_fields(invalid_date), ["date"])
+
+        invalid_time = {**valid, "time": "25:90"}
+        self.assertEqual(missing_booking_fields(invalid_time), ["time"])
+
+        too_long_reason = {**valid, "reason": "x" * 501}
+        self.assertEqual(missing_booking_fields(too_long_reason), ["reason"])
+
     def test_replaying_booking_request_reuses_pending_reservation(self):
         db = SessionLocal()
         phone = "+919876543298"
