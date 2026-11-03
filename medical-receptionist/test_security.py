@@ -425,7 +425,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             main_module.limiter.enabled = limiter_enabled
 
     async def test_production_chat_fails_closed_without_turnstile_configuration(self):
-        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY")}
+        original = {key: os.environ.get(key) for key in ("ENVIRONMENT", "TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY")}
         limiter_enabled = main_module.limiter.enabled
         main_module.limiter.enabled = False
         os.environ["ENVIRONMENT"] = "production"
@@ -449,6 +449,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         main_module.limiter.enabled = False
         os.environ["ENVIRONMENT"] = "production"
         os.environ["TURNSTILE_SECRET_KEY"] = "test-turnstile-secret"
+        os.environ["TURNSTILE_SITE_KEY"] = "test-turnstile-site-key"
         try:
             response = await self.client.post(
                 "/chat", json={"session_id": "turnstile-token-test", "message": "test"}
@@ -503,7 +504,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         response.json.return_value = {"success": False}
         client = Mock()
         client.post = AsyncMock(return_value=response)
-        context = Mock()
+        context = MagicMock()
         context.__aenter__ = AsyncMock(return_value=client)
         context.__aexit__ = AsyncMock(return_value=False)
         request = SimpleNamespace(
