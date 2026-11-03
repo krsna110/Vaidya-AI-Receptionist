@@ -868,6 +868,21 @@ async def health_check():
     return {"status": "ok", "service": "Vaidya AI", "version": "2.0"}
 
 
+@app.get("/ready", status_code=status.HTTP_200_OK)
+async def readiness_check(db: Session = Depends(database.get_db)):
+    """Report readiness only when persistence and the booking calendar are available."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("Readiness database check failed | error_type=%s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+
+    if calendar_service is None or getattr(calendar_service, "service", None) is None:
+        raise HTTPException(status_code=503, detail="Google Calendar is unavailable.")
+
+    return {"status": "ready", "database": "ok", "calendar": "configured"}
+
+
 @app.get("/public-config")
 async def public_config():
     """Expose only browser-safe configuration; never return server secrets."""
