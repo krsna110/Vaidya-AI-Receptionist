@@ -157,8 +157,12 @@ Here you can test the `/auth/token` and `/webhook` endpoints, among others.
 ## API Endpoints Reference
 
 -   **GET `/health`**
-    -   Description: Health check endpoint to verify the API is running.
+    -   Description: Liveness check to verify the API process is running.
     -   Status Code: 200 OK
+
+-   **GET `/ready`**
+    -   Description: Readiness check; returns 200 only when the database responds and Google Calendar is configured.
+    -   Returns 503 when a required dependency is unavailable.
 
 -   **POST `/auth/token`**
     -   Description: Authenticates a database-backed user and returns a short-lived access token. Bootstrap the first admin with `ADMIN_USERNAME` and `ADMIN_PASSWORD` environment variables.
