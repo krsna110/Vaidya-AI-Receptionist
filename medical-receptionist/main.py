@@ -5,6 +5,8 @@ import os
 import hashlib
 import hmac
 import re
+
+import httpx
 from datetime import datetime, timedelta, date, timezone
 from uuid import uuid4
 
@@ -115,6 +117,49 @@ def parse_conversation_state_data(raw_data) -> dict:
     except (TypeError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+async def verify_public_chat_challenge(request: Request) -> None:
+    """Verify Cloudflare Turnstile server-side before accepting public chat in production."""
+    environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+    if environment not in {"production", "prod"}:
+        return
+
+    secret = os.getenv("TURNSTILE_SECRET_KEY", "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=503,
+            detail="Public chat verification is not configured.",
+        )
+
+    token = request.headers.get("X-Turnstile-Token", "").strip()
+    if not token:
+        raise HTTPException(status_code=403, detail="Please complete the security check.")
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                data={
+                    "secret": secret,
+                    "response": token,
+                    "remoteip": request.client.host if request.client else "",
+                },
+            )
+            response.raise_for_status()
+            verification = response.json()
+    except Exception as exc:
+        logger.error(
+            "Turnstile verification unavailable | error_type=%s",
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Security verification is temporarily unavailable.",
+        ) from exc
+
+    if not isinstance(verification, dict) or verification.get("success") is not True:
+        raise HTTPException(status_code=403, detail="Security verification failed.")
 
 
 def verify_internal_webhook_request(request: Request, raw_body: bytes) -> None:
@@ -763,7 +808,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Turnstile-Token"],
 )
 
 # ---------- Initialize services ----------
@@ -798,6 +843,12 @@ async def shutdown_event():
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():
     return {"status": "ok", "service": "Vaidya AI", "version": "2.0"}
+
+
+@app.get("/public-config")
+async def public_config():
+    """Expose only browser-safe configuration; never return server secrets."""
+    return {"turnstile_site_key": os.getenv("TURNSTILE_SITE_KEY", "").strip()}
 
 
 @app.get("/chat")
@@ -932,9 +983,11 @@ async def webhook_receiver(
 ):
     """Receives internal chat requests after authentication by the trusted caller."""
     raw_body = await request.body()
-    # /chat backs the existing browser chat UI and is protected by rate limiting.
+    # /chat is browser-facing and requires a server-verified Turnstile token in production.
     # /webhook is for trusted server-to-server callers and requires HMAC in production.
-    if request.url.path != "/chat":
+    if request.url.path == "/chat":
+        await verify_public_chat_challenge(request)
+    else:
         verify_internal_webhook_request(request, raw_body)
     user_id = payload.user_id
     message = (payload.message or "").strip()[:500]
