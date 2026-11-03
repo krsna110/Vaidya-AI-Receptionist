@@ -234,6 +234,77 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
             db.commit()
             db.close()
 
+    async def test_booking_history_stores_the_final_confirmation_response(self):
+        session_id = "final-response-history-test"
+        phone = "+919876543239"
+        slot_date, slot_time = "2099-03-04", "11:00"
+        db = SessionLocal()
+        try:
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            patient = models.Patient(name="History Test Patient", phone_number=phone)
+            db.add(patient)
+            db.commit()
+        finally:
+            db.close()
+
+        booking_data = {
+            "name": "History Test Patient",
+            "phone": phone,
+            "date": slot_date,
+            "time": slot_time,
+            "reason": "history persistence test",
+        }
+        main_module.state_manager.set_state(session_id, "CONFIRM", booking_data)
+        original_generate = main_module.agent.generate_response
+        original_extract = main_module.agent.extract_patient_data
+        original_calendar = main_module.calendar_service
+        original_limiter = main_module.limiter.enabled
+        main_module.agent.generate_response = Mock(return_value={
+            "intent": "BOOKING", "response": "Intermediate model response",
+            "data": {}, "confidence": 0.9, "language": "en",
+        })
+        main_module.agent.extract_patient_data = Mock(return_value={})
+        calendar_mock = Mock()
+        calendar_mock.get_available_slots.return_value = [slot_time]
+        calendar_mock.book_appointment.return_value = "history-test-calendar-event"
+        main_module.calendar_service = calendar_mock
+        main_module.limiter.enabled = False
+        try:
+            response = await self.client.post(
+                "/chat", json={"session_id": session_id, "message": "yes"}
+            )
+            self.assertEqual(response.status_code, 200)
+            final_response = response.json()["response"]
+            self.assertIn("Your appointment is confirmed", final_response)
+
+            db = SessionLocal()
+            try:
+                saved_ai_message = (
+                    db.query(models.Conversation)
+                    .filter_by(session_id=session_id, sender_type="AI")
+                    .order_by(models.Conversation.id.desc())
+                    .first()
+                )
+                self.assertIsNotNone(saved_ai_message)
+                self.assertEqual(saved_ai_message.message, final_response)
+                self.assertNotEqual(saved_ai_message.message, "Intermediate model response")
+            finally:
+                db.close()
+        finally:
+            main_module.agent.generate_response = original_generate
+            main_module.agent.extract_patient_data = original_extract
+            main_module.calendar_service = original_calendar
+            main_module.limiter.enabled = original_limiter
+            main_module.state_manager.reset_state(session_id)
+            db = SessionLocal()
+            db.query(models.Conversation).filter_by(session_id=session_id).delete()
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+            db.close()
+
     async def test_patient_endpoints_require_authentication(self):
         response = await self.client.get("/patients")
         self.assertEqual(response.status_code, 401)
