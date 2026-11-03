@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import logging
+import hashlib
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import Request
@@ -291,6 +292,15 @@ class GoogleCalendarService:
                 ],
             },
         }
+        if booking_reference:
+            # Google Calendar accepts lowercase base32hex event IDs. A SHA-256
+            # hex digest is valid and makes concurrent retries for one durable
+            # appointment contend on the same event ID instead of creating
+            # duplicate Calendar events.
+            event_body["id"] = hashlib.sha256(
+                f"vaidya-appointment:{booking_reference}".encode("utf-8")
+            ).hexdigest()
+
         if not event_body["location"]:
             event_body.pop("location")
 
@@ -299,6 +309,16 @@ class GoogleCalendarService:
             logger.info("Google Calendar event created")
             return event.get("id")
         except HttpError as exc:
+            # A parallel retry may have inserted the deterministic event first.
+            # Recover it by the private booking reference after the 409 response.
+            if booking_reference and getattr(exc.resp, "status", None) == 409:
+                try:
+                    recovered_event_id = self.find_appointment_event(booking_reference)
+                    if recovered_event_id:
+                        logger.info("Recovered concurrently created Calendar event")
+                        return recovered_event_id
+                except Exception:
+                    logger.exception("Could not recover Calendar event after insert conflict")
             logger.error("Google Calendar rejected appointment creation | error_type=%s", type(exc).__name__)
             return None
         except Exception as exc:
