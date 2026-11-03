@@ -137,6 +137,8 @@ class GoogleCalendarService:
             day_start = datetime.datetime.combine(date, datetime.time(start_hour), tzinfo=clinic_tz)
             day_end = datetime.datetime.combine(date, datetime.time(end_hour), tzinfo=clinic_tz)
             now = datetime.datetime.now(clinic_tz)
+            if date < now.date():
+                return []
             current_time = day_start
             if date == now.date() and current_time < now:
                 elapsed = (now - day_start).total_seconds()
