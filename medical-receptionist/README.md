@@ -163,15 +163,14 @@ Use only one server command at a time on port 8000. WhatsApp credentials are opt
 
 The development server should be available at `http://127.0.0.1:8000`. Run commands from the `medical-receptionist/` directory so static files, migrations, and `.env` resolve correctly.
 
-### 8. Access the Chat UI
+### 8. Access the patient and admin interfaces
 
-Open your web browser and navigate to:
+- Patient-facing chat and portal-style booking workspace: `http://127.0.0.1:8000/chat` or `http://127.0.0.1:8000/portal`.
+- Clinic admin workspace: `http://127.0.0.1:8000/admin`.
 
-```
-http://127.0.0.1:8000/chat
-```
+The patient interface keeps the anonymous chat session and visible conversation history in that browser. It is not a verified patient account or cross-device appointment-history portal; patient identity verification and self-service appointment history require a dedicated patient authentication flow.
 
-The chat UI can start a conversation with the AI receptionist. Existing appointment cancellation and rescheduling are not self-service in public chat because patient identity verification is not implemented; the assistant directs patients to clinic staff instead of claiming to change a booking. Admin cancellation is available through the authenticated API. Admin login is database-backed; configure `ADMIN_USERNAME` and `ADMIN_PASSWORD` for first-run bootstrap. Never use default/demo credentials in production.
+The admin workspace uses the database-backed `/auth/token` login and loads appointments, patients, and recent conversation threads from authenticated API routes. Conversation history is currently read-only; staff reply delivery is not implemented.
 
 ### 9. Test with Swagger UI (API Documentation)
 
