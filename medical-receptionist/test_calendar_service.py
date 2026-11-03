@@ -1,5 +1,6 @@
 """Calendar slot calculations tested without Google credentials or network access."""
 import os
+import json
 import unittest
 from datetime import date, datetime, timedelta
 from unittest.mock import Mock
@@ -184,6 +185,29 @@ class CalendarSlotTests(unittest.TestCase):
 
         self.assertIsNone(result)
         self.assertIsNone(service.service.events_api.last_insert_body)
+
+    def test_calendar_event_omits_patient_identifiers_and_visit_reason(self):
+        clinic_tz = ZoneInfo("Asia/Kolkata")
+        slot_date = date(2098, 12, 30)
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+
+        event_id = service.book_appointment(
+            patient_name="Private Patient Name",
+            phone="+919876543210",
+            start_datetime=datetime.combine(slot_date, datetime.strptime("10:00", "%H:%M").time(), tzinfo=clinic_tz),
+            reason="sensitive medical reason",
+            booking_reference="appointment-privacy-123",
+        )
+
+        self.assertEqual(event_id, "created-calendar-event")
+        body = service.service.events_api.last_insert_body["body"]
+        serialized_body = json.dumps(body)
+        self.assertNotIn("Private Patient Name", serialized_body)
+        self.assertNotIn("+919876543210", serialized_body)
+        self.assertNotIn("sensitive medical reason", serialized_body)
+        self.assertIn("appointment-privacy-123", body["description"])
 
     def test_find_appointment_event_recovers_orphaned_calendar_event(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
