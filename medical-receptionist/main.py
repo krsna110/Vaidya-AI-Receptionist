@@ -343,24 +343,23 @@ def cancel_appointment_record(db: Session, appointment_id: int) -> bool:
 
 
 def upsert_patient_from_data(db: Session, data: dict) -> None:
-    """Persist patient details when enough information is available."""
+    """Persist patient details using phone number as the stable identity key.
+
+    Names are not unique identifiers: two patients can legitimately share one.
+    Do not create or attach a patient record until a phone number is available.
+    """
     name = (data.get("name") or "").strip()
     phone = normalize_phone(data.get("phone") or "")
 
-    if not name and not phone:
+    if not phone:
         return
 
-    patient = None
-    if phone:
-        patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
-
-    if patient is None and name:
-        patient = db.query(models.Patient).filter(models.Patient.name == name).first()
+    patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
 
     if patient is None:
         patient = models.Patient(
             name=name or None,
-            phone_number=phone or None,
+            phone_number=phone,
         )
         db.add(patient)
         db.commit()
@@ -371,9 +370,6 @@ def upsert_patient_from_data(db: Session, data: dict) -> None:
     updated = False
     if name and not patient.name:
         patient.name = name
-        updated = True
-    if phone and not patient.phone_number:
-        patient.phone_number = phone
         updated = True
     if updated:
         db.add(patient)
@@ -413,9 +409,9 @@ def create_appointment_from_booking_data(db: Session, data: dict) -> int | None:
     except (ValueError, TypeError):
         return None
 
+    # Phone number is the stable patient identifier. Never attach a booking
+    # to a different patient merely because their names happen to match.
     patient = db.query(models.Patient).filter(models.Patient.phone_number == phone).first()
-    if patient is None and name:
-        patient = db.query(models.Patient).filter(models.Patient.name == name).first()
     if patient is None:
         return None
 
