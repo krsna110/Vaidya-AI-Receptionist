@@ -292,6 +292,37 @@ class GoogleCalendarService:
             logger.error("Google Calendar cancellation failed | error_type=%s", type(e).__name__)
             return False
 
+    def cancel_appointment_by_reference(self, booking_reference: str) -> bool:
+        """Cancel an event by durable appointment reference when its event ID was not saved."""
+        if not self.service:
+            return False
+        try:
+            events = (
+                self.service.events()
+                .list(
+                    calendarId=self.calendar_id,
+                    privateExtendedProperty=f"vaidya_appointment_id={booking_reference}",
+                    maxResults=1,
+                    singleEvents=True,
+                )
+                .execute()
+                .get("items", [])
+            )
+            if not events:
+                # No matching event is equivalent to an already-completed cancellation.
+                return True
+            event_id = events[0].get("id")
+            if not event_id:
+                logger.error("Calendar event found without an ID for booking reference")
+                return False
+            return self.cancel_appointment(event_id)
+        except Exception as exc:
+            logger.error(
+                "Calendar cancellation by booking reference failed | error_type=%s",
+                type(exc).__name__,
+            )
+            return False
+
     def suggest_best_slot(self, date: datetime.date, duration_minutes: int = 30) -> str or None:
         available_slots = self.get_available_slots(date, duration_minutes)
         if available_slots:
