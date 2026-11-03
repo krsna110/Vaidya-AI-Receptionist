@@ -412,6 +412,17 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.get("/patients")
         self.assertEqual(response.status_code, 401)
 
+    async def test_chat_ui_uses_cryptographically_secure_session_ids(self):
+        from pathlib import Path
+
+        chat_source = Path("static/chat.html").read_text(encoding="utf-8-sig")
+        generator_start = chat_source.index("function generateUUID()")
+        generator_end = chat_source.index("function appendMessage", generator_start)
+        generator = chat_source[generator_start:generator_end]
+        self.assertIn("window.crypto.randomUUID()", generator)
+        self.assertIn("window.crypto.getRandomValues(bytes)", generator)
+        self.assertNotIn("Math.random()", generator)
+
     async def test_public_chat_rejects_oversized_message(self):
         limiter_enabled = main_module.limiter.enabled
         main_module.limiter.enabled = False
