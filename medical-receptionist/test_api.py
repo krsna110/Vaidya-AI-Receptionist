@@ -25,6 +25,40 @@ from state import StateManager, ConversationState
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_booking_state_survives_state_manager_restart(self):
+        user_id = "state-restart-regression-test"
+        first_manager = StateManager()
+        try:
+            first_manager.reset_state(user_id)
+            first_manager.set_state(user_id, "CONFIRM", {
+                "name": "Rahul Sharma",
+                "phone": "+919876543210",
+                "date": "2098-12-31",
+                "time": "11:00",
+                "reason": "routine checkup",
+            })
+        finally:
+            first_manager.close()
+
+        # A new manager/session simulates a fresh application process after restart.
+        second_manager = StateManager()
+        try:
+            restored = second_manager.get_state(user_id)
+            self.assertEqual(restored.state, "CONFIRM")
+            self.assertEqual(__import__("json").loads(restored.data), {
+                "unknown_count": 0,
+                "name": "Rahul Sharma",
+                "phone": "+919876543210",
+                "date": "2098-12-31",
+                "time": "11:00",
+                "reason": "routine checkup",
+            })
+        finally:
+            second_manager.reset_state(user_id)
+            second_manager.db.query(ConversationState).filter_by(user_id=user_id).delete()
+            second_manager.db.commit()
+            second_manager.close()
+
     def test_state_manager_recovers_from_malformed_persisted_json(self):
         user_id = "malformed-state-recovery-test"
         manager = StateManager()
