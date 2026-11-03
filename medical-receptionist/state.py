@@ -43,8 +43,14 @@ class StateManager:
         state.state = new_state
         state.last_updated = datetime.datetime.now()
         if data is not None:
-            # Merge new data with existing data if present
-            existing_data = json.loads(state.data or "{}")
+            # Recover safely if an older or partially corrupted row contains
+            # invalid JSON or a non-object JSON value.
+            try:
+                existing_data = json.loads(state.data or "{}")
+            except (TypeError, ValueError):
+                existing_data = {}
+            if not isinstance(existing_data, dict):
+                existing_data = {}
             merged_data = {**existing_data, **data}
             state.data = json.dumps(merged_data)
         self.db.commit()
