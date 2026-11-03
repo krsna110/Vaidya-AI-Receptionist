@@ -749,7 +749,10 @@ async def cancel_appointment(
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if appointment is None:
         raise HTTPException(status_code=404, detail="Appointment not found.")
-    if not appointment.is_confirmed:
+    # A pending reservation may already have a Calendar event if the process
+    # crashed after the external write. Cancel by durable status/event ID, not
+    # only by is_confirmed, so pending reservations can release their slot.
+    if appointment.booking_status == "cancelled":
         return {"status": "already_cancelled", "appointment_id": appointment_id}
 
     if appointment.google_event_id:
