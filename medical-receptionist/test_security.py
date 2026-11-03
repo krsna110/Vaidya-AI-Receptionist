@@ -128,6 +128,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         def migrated_database():
             db = Mock()
             db.execute.return_value.first.return_value = ("head",)
+            db.query.return_value.count.return_value = 1
             yield db
 
         app.dependency_overrides[main_module.database.get_db] = migrated_database
@@ -153,6 +154,7 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         def migrated_database():
             db = Mock()
             db.execute.return_value.first.return_value = ("head",)
+            db.query.return_value.count.return_value = 1
             yield db
 
         app.dependency_overrides[main_module.database.get_db] = migrated_database
