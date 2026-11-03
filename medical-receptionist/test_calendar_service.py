@@ -73,6 +73,28 @@ class CalendarSlotTests(unittest.TestCase):
 
         self.assertFalse(service.cancel_appointment("event-with-permission-error"))
 
+    def test_cancellation_recovers_calendar_event_by_booking_reference(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([{"id": "orphan-event-id"}])
+
+        self.assertTrue(service.cancel_appointment_by_reference("appointment-456"))
+        self.assertEqual(
+            service.service.events_api.last_query["privateExtendedProperty"],
+            "vaidya_appointment_id=appointment-456",
+        )
+        self.assertEqual(
+            service.service.events_api.last_deleted_event_id,
+            "orphan-event-id",
+        )
+
+    def test_cancellation_by_booking_reference_is_idempotent_when_event_is_missing(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+
+        self.assertTrue(service.cancel_appointment_by_reference("appointment-without-event"))
+
     def test_slot_overlap_uses_timezone_aware_event_times(self):
         clinic_tz = ZoneInfo("Asia/Kolkata")
         future_day = datetime.now(clinic_tz).date() + timedelta(days=10)
