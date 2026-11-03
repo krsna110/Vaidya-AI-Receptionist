@@ -272,9 +272,9 @@ class GoogleCalendarService:
 
         clinic_name = os.getenv("CLINIC_NAME", "Clinic").strip() or "Clinic"
         event_body = {
-            "summary": f"Appointment at {clinic_name}: {reason} - {patient_name}",
+            "summary": f"Appointment at {clinic_name}",
             "location": os.getenv("CLINIC_ADDRESS", "").strip() or None,
-            "description": "Patient contact details are stored in the clinic system.",
+            "description": f"Appointment reference: {booking_reference}. Patient details and visit reason are stored in the clinic system." if booking_reference else "Patient details and visit reason are stored in the clinic system.",
             "extendedProperties": {
                 "private": {"vaidya_appointment_id": str(booking_reference)}
             } if booking_reference else {},
