@@ -126,7 +126,8 @@ async def verify_public_chat_challenge(request: Request) -> None:
         return
 
     secret = os.getenv("TURNSTILE_SECRET_KEY", "").strip()
-    if not secret:
+    site_key = os.getenv("TURNSTILE_SITE_KEY", "").strip()
+    if not secret or not site_key:
         raise HTTPException(
             status_code=503,
             detail="Public chat verification is not configured.",
