@@ -776,7 +776,11 @@ async def cancel_appointment(
             raise HTTPException(status_code=503, detail="Calendar service is unavailable; appointment was not changed.")
         if not calendar_service.cancel_appointment(appointment.google_event_id):
             raise HTTPException(status_code=502, detail="Google Calendar cancellation failed; appointment was not changed.")
-    elif appointment.booking_status in {"pending", "failed"} and calendar_service is not None:
+    elif (
+        appointment.booking_status in {"pending", "failed"}
+        and calendar_service is not None
+        and getattr(calendar_service, "service", None) is not None
+    ):
         # The process may have created the Calendar event but crashed before
         # persisting its event ID. Search by the private appointment reference.
         if not calendar_service.cancel_appointment_by_reference(str(appointment.id)):
