@@ -54,6 +54,23 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         finally:
             main_module.calendar_service = original_calendar
 
+    async def test_readiness_fails_when_database_query_fails(self):
+        def failing_database_dependency():
+            db = Mock()
+            db.execute.side_effect = RuntimeError("database unavailable")
+            yield db
+
+        original_override = app.dependency_overrides.get(main_module.database.get_db)
+        app.dependency_overrides[main_module.database.get_db] = failing_database_dependency
+        try:
+            response = await self.client.get("/ready")
+            self.assertEqual(response.status_code, 503)
+        finally:
+            if original_override is None:
+                app.dependency_overrides.pop(main_module.database.get_db, None)
+            else:
+                app.dependency_overrides[main_module.database.get_db] = original_override
+
     async def test_readiness_succeeds_when_database_and_calendar_are_available(self):
         original_calendar = main_module.calendar_service
         main_module.calendar_service = Mock(service=Mock())
