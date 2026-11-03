@@ -900,6 +900,8 @@ async def readiness_check(db: Session = Depends(database.get_db)):
             raise HTTPException(status_code=503, detail="Production security configuration is incomplete.")
         if not os.getenv("GEMINI_API_KEY", "").strip() and not os.getenv("GROQ_API_KEY", "").strip():
             raise HTTPException(status_code=503, detail="No AI provider is configured.")
+        if db.query(models.User).count() < 1:
+            raise HTTPException(status_code=503, detail="No admin account has been bootstrapped.")
 
     return {"status": "ready", "database": "ok", "calendar": "configured"}
 
