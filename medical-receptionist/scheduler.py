@@ -41,6 +41,8 @@ class Scheduler:
                 session.query(Appointment)
                 .filter(
                     Appointment.date == tomorrow.isoformat(),
+                    Appointment.booking_status == "confirmed",
+                    Appointment.is_confirmed.is_(True),
                     Appointment.reminder_status == None,
                 )
                 .all()
@@ -80,6 +82,8 @@ class Scheduler:
                 session.query(Appointment)
                 .filter(
                     Appointment.date == today.isoformat(),
+                    Appointment.booking_status == "confirmed",
+                    Appointment.is_confirmed.is_(True),
                     Appointment.followup_status == None,
                 )
                 .all()
