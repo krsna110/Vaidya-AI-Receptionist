@@ -7,9 +7,11 @@ on:
       - feat/whatsapp-voice-image
       - fix/production-readiness-backlog
       - fix/issue-5-internal-webhook-auth
+      - fix/whatsapp-render-entrypoint
   pull_request:
     branches:
       - main
+      - fix/issue-5-internal-webhook-auth
 
 jobs:
   unit-tests:
