@@ -351,6 +351,13 @@ def is_booking_message(message: str, details: dict | None = None) -> bool:
     return any(term in text_msg for term in booking_terms)
 
 
+def is_cancel_or_reschedule_request(message: str) -> bool:
+    """Detect changes to an existing appointment that this public chat cannot safely perform."""
+    normalized = re.sub(r"[^a-z ]", " ", (message or "").lower())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return bool(re.search(r"\b(cancel|cancellation|reschedule|rescheduling|postpone)\b", normalized))
+
+
 def missing_booking_fields(data: dict) -> list[str]:
     """Return required fields that are absent or fail basic booking validation."""
     missing = [
@@ -1172,6 +1179,12 @@ async def webhook_receiver(
     }:
         new_state = "COLLECT_INFO"
         response_text = "No problem. Tell me which appointment detail you would like to change."
+    elif is_cancel_or_reschedule_request(message):
+        new_state = "INTENT_DETECT"
+        response_text = (
+            "For cancellation or rescheduling, please contact clinic staff directly "
+            "and share your appointment ID. I can't change an existing booking from this chat yet."
+        )
     elif intent == "GREETING":
         new_state = "INTENT_DETECT"
     elif intent == "BOOKING":
