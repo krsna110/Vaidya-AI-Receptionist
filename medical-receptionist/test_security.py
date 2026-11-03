@@ -867,6 +867,149 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
                 else:
                     os.environ[key] = value
 
+    async def test_admin_cancellation_releases_the_reserved_slot(self):
+        db = SessionLocal()
+        slot_date, slot_time = "2099-12-30", "14:00"
+        phones = ["+919999900101", "+919999900102"]
+        original_db_override = app.dependency_overrides.get(main_module.database.get_db)
+        original_user_override = app.dependency_overrides.get(main_module.auth.get_current_user)
+
+        def override_db():
+            yield db
+
+        app.dependency_overrides[main_module.database.get_db] = override_db
+        app.dependency_overrides[main_module.auth.get_current_user] = (
+            lambda: main_module.auth.TokenData(username="test-admin")
+        )
+        try:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(models.Patient.phone_number.in_(phones)).delete()
+            db.commit()
+
+            first_patient = models.Patient(name="Cancellation Patient", phone_number=phones[0])
+            db.add(first_patient)
+            db.commit()
+            db.refresh(first_patient)
+            appointment = models.Appointment(
+                patient_id=first_patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="cancellation regression",
+                description="cancellation regression",
+                is_confirmed=True,
+                booking_status="confirmed",
+                google_event_id="calendar-event-to-cancel",
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+
+            calendar = Mock(service=Mock())
+            calendar.cancel_appointment.return_value = True
+            with patch.object(main_module, "calendar_service", calendar):
+                response = await self.client.post(f"/appointments/{appointment.id}/cancel")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "cancelled")
+            db.expire_all()
+            saved = db.query(models.Appointment).filter_by(id=appointment.id).one()
+            self.assertEqual(saved.booking_status, "cancelled")
+            self.assertFalse(saved.is_confirmed)
+
+            # The partial unique index must release a cancelled appointment's slot.
+            second_patient = models.Patient(name="Replacement Patient", phone_number=phones[1])
+            db.add(second_patient)
+            db.commit()
+            db.refresh(second_patient)
+            replacement = models.Appointment(
+                patient_id=second_patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="replacement booking",
+                description="replacement booking",
+                is_confirmed=False,
+                booking_status="pending",
+            )
+            db.add(replacement)
+            db.commit()
+            self.assertIsNotNone(replacement.id)
+        finally:
+            db.rollback()
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter(models.Patient.phone_number.in_(phones)).delete()
+            db.commit()
+            db.close()
+            if original_db_override is None:
+                app.dependency_overrides.pop(main_module.database.get_db, None)
+            else:
+                app.dependency_overrides[main_module.database.get_db] = original_db_override
+            if original_user_override is None:
+                app.dependency_overrides.pop(main_module.auth.get_current_user, None)
+            else:
+                app.dependency_overrides[main_module.auth.get_current_user] = original_user_override
+
+    async def test_calendar_cancellation_failure_keeps_appointment_confirmed(self):
+        db = SessionLocal()
+        slot_date, slot_time = "2099-12-31", "15:00"
+        phone = "+919999900103"
+        original_db_override = app.dependency_overrides.get(main_module.database.get_db)
+        original_user_override = app.dependency_overrides.get(main_module.auth.get_current_user)
+
+        def override_db():
+            yield db
+
+        app.dependency_overrides[main_module.database.get_db] = override_db
+        app.dependency_overrides[main_module.auth.get_current_user] = (
+            lambda: main_module.auth.TokenData(username="test-admin")
+        )
+        try:
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+
+            patient = models.Patient(name="Calendar Failure Patient", phone_number=phone)
+            db.add(patient)
+            db.commit()
+            db.refresh(patient)
+            appointment = models.Appointment(
+                patient_id=patient.id,
+                date=slot_date,
+                time=slot_time,
+                reason="calendar failure regression",
+                description="calendar failure regression",
+                is_confirmed=True,
+                booking_status="confirmed",
+                google_event_id="calendar-event-failure",
+            )
+            db.add(appointment)
+            db.commit()
+            db.refresh(appointment)
+
+            calendar = Mock(service=Mock())
+            calendar.cancel_appointment.return_value = False
+            with patch.object(main_module, "calendar_service", calendar):
+                response = await self.client.post(f"/appointments/{appointment.id}/cancel")
+
+            self.assertEqual(response.status_code, 502)
+            db.expire_all()
+            saved = db.query(models.Appointment).filter_by(id=appointment.id).one()
+            self.assertEqual(saved.booking_status, "confirmed")
+            self.assertTrue(saved.is_confirmed)
+        finally:
+            db.rollback()
+            db.query(models.Appointment).filter_by(date=slot_date, time=slot_time).delete()
+            db.query(models.Patient).filter_by(phone_number=phone).delete()
+            db.commit()
+            db.close()
+            if original_db_override is None:
+                app.dependency_overrides.pop(main_module.database.get_db, None)
+            else:
+                app.dependency_overrides[main_module.database.get_db] = original_db_override
+            if original_user_override is None:
+                app.dependency_overrides.pop(main_module.auth.get_current_user, None)
+            else:
+                app.dependency_overrides[main_module.auth.get_current_user] = original_user_override
+
     async def test_cors_does_not_reflect_unconfigured_origin(self):
         response = await self.client.options(
             "/health",
