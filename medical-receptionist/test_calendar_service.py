@@ -271,6 +271,31 @@ class CalendarSlotTests(unittest.TestCase):
                 else:
                     os.environ[key] = value
 
+    def test_midnight_closing_hour_is_supported(self):
+        service = GoogleCalendarService.__new__(GoogleCalendarService)
+        service.calendar_id = "clinic-calendar@example.test"
+        service.service = FakeCalendar([])
+        future_day = datetime.now(ZoneInfo("Asia/Kolkata")).date() + timedelta(days=10)
+        keys = (
+            "CLINIC_OPEN_HOUR", "CLINIC_CLOSE_HOUR", "APPOINTMENT_DURATION_MINUTES",
+            "CLINIC_WORKING_DAYS", "CLINIC_HOLIDAYS", "CLINIC_BREAKS",
+        )
+        original = {key: os.environ.get(key) for key in keys}
+        try:
+            os.environ["CLINIC_OPEN_HOUR"] = "23"
+            os.environ["CLINIC_CLOSE_HOUR"] = "24"
+            os.environ["APPOINTMENT_DURATION_MINUTES"] = "30"
+            os.environ["CLINIC_WORKING_DAYS"] = "0,1,2,3,4,5,6"
+            os.environ["CLINIC_HOLIDAYS"] = ""
+            os.environ["CLINIC_BREAKS"] = ""
+            self.assertEqual(service.get_available_slots(future_day), ["23:00", "23:30"])
+        finally:
+            for key, value in original.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
     def test_invalid_clinic_timezone_fails_closed(self):
         service = GoogleCalendarService.__new__(GoogleCalendarService)
         service.calendar_id = "primary"
