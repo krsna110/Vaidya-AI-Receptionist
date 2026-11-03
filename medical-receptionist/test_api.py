@@ -17,12 +17,19 @@ from main import (
     parse_booking_datetime,
     create_appointment_from_booking_data,
     get_recent_conversation_history,
+    parse_conversation_state_data,
 )
 from database import SessionLocal
 import models
 
 
 class BookingHelperTests(unittest.TestCase):
+    def test_conversation_state_json_is_decoded_safely(self):
+        self.assertEqual(parse_conversation_state_data('{"name": "Rahul"}'), {"name": "Rahul"})
+        self.assertEqual(parse_conversation_state_data({"name": "Rahul"}), {"name": "Rahul"})
+        self.assertEqual(parse_conversation_state_data("not-json"), {})
+        self.assertEqual(parse_conversation_state_data('["not", "an", "object"]'), {})
+
     def test_conversation_history_uses_latest_six_messages_in_chronological_order(self):
         db = SessionLocal()
         session_id = "history-regression-test"
