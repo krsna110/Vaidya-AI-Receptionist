@@ -45,6 +45,25 @@ class SecurityRegressionTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException):
             verify_token("not-a-jwt", HTTPException(status_code=401))
 
+    async def test_readiness_requires_calendar_service(self):
+        original_calendar = main_module.calendar_service
+        main_module.calendar_service = None
+        try:
+            response = await self.client.get("/ready")
+            self.assertEqual(response.status_code, 503)
+        finally:
+            main_module.calendar_service = original_calendar
+
+    async def test_readiness_succeeds_when_database_and_calendar_are_available(self):
+        original_calendar = main_module.calendar_service
+        main_module.calendar_service = Mock(service=Mock())
+        try:
+            response = await self.client.get("/ready")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "ready")
+        finally:
+            main_module.calendar_service = original_calendar
+
     async def test_demo_admin_credentials_are_rejected(self):
         response = await self.client.post(
             "/auth/token",
