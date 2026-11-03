@@ -47,6 +47,8 @@ Set these environment variables in the hosting provider's secret/configuration U
 | `APPOINTMENT_DURATION_MINUTES` | Slot duration, default 30 |
 | `VAIDYA_INTERNAL_WEBHOOK_SECRET` | Required for signed internal calls to `/webhook`; generate a unique random secret |
 | `ALLOW_UNAUTHENTICATED_WEBHOOK` | Set to `false` in production; the unsigned bypass is ignored in production |
+| `TURNSTILE_SITE_KEY` | Required for production public chat; browser-visible Cloudflare Turnstile site key |
+| `TURNSTILE_SECRET_KEY` | Required for production public chat; server-only Cloudflare Turnstile secret |
 | `GOOGLE_CALENDAR_ID` | Calendar ID shared with the service account |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Production service-account JSON stored as a secret |
 
@@ -56,7 +58,7 @@ Do not set `GOOGLE_CALENDAR_ALLOW_OAUTH_FLOW=true` in production. Create a Googl
 
 The current UI files are `medical-receptionist/static/chat.html` and `medical-receptionist/static/admin.html`, served by FastAPI at `/chat` and `/admin`. The `vaidyai-web` directory currently contains HTML design prototypes only, so the Node deployment shown in older notes is not runnable. Do not deploy it as Next.js until a real app and `package.json` are added.
 
-The browser chat uses the rate-limited `POST /chat` route; the server-to-server `POST /webhook` route requires HMAC in production. Before exposing public chat to real users, put server-verified bot protection and gateway/WAF controls in front of `/chat`. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
+The browser chat uses the rate-limited `POST /chat` route and verifies Cloudflare Turnstile tokens server-side in production. Set both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`; production chat fails closed if the secret is missing. Add gateway/WAF controls as another layer. The server-to-server `POST /webhook` route requires HMAC in production. Use Redis via `RATE_LIMIT_STORAGE_URI` for shared limits when running multiple backend workers; the built-in IP limit is only a baseline, not bot protection.
 
 ## Smoke tests
 
