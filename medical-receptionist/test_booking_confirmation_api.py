@@ -6,6 +6,7 @@ requiring live API credentials or a Google Calendar account.
 import os
 import uuid
 import unittest
+from datetime import date, timedelta
 from unittest.mock import Mock, patch
 
 import httpx
@@ -32,7 +33,7 @@ class BookingConfirmationApiTests(unittest.IsolatedAsyncioTestCase):
         self.booking = {
             "name": "Local Test Patient",
             "phone": self.phone,
-            "date": "2098-12-30",
+            "date": (date(2090, 1, 1) + timedelta(days=int(suffix[:8], 16) % 2500)).isoformat(),
             "time": "11:00",
             "reason": "routine consultation",
         }
