@@ -969,22 +969,6 @@ async def webhook_receiver(
             "session_id": user_id,
         }
 
-    # Save current message and response to DB
-    try:
-        conversation_entry_user = models.Conversation(
-            session_id=user_id, sender_type="USER", speaker="patient", message=message
-        )
-        conversation_entry_ai = models.Conversation(
-            session_id=user_id, sender_type="AI", speaker="receptionist", message=response_text
-        )
-        db.add(conversation_entry_user)
-        db.add(conversation_entry_ai)
-        db.commit()
-        db.refresh(conversation_entry_user)
-        db.refresh(conversation_entry_ai)
-    except Exception as e:
-        logger.error("Failed to save conversation history | session_ref=%s", session_log_ref(user_id), exc_info=True)
-
     # Extract patient data using the new agent method
     extracted_patient_data = await asyncio.to_thread(agent.extract_patient_data, message, conversation_history)
     logger.info("Patient data extraction completed")
@@ -1105,6 +1089,24 @@ async def webhook_receiver(
             new_state = "INTENT_DETECT"
         else:
             response_text = "I didn't quite understand. Are you looking to book an appointment, or do you have a question about our clinic?"
+
+    # Persist the final response after booking/state logic so history matches
+    # what the patient actually received, not the model's intermediate draft.
+    # Save current message and response to DB
+    try:
+        conversation_entry_user = models.Conversation(
+            session_id=user_id, sender_type="USER", speaker="patient", message=message
+        )
+        conversation_entry_ai = models.Conversation(
+            session_id=user_id, sender_type="AI", speaker="receptionist", message=response_text
+        )
+        db.add(conversation_entry_user)
+        db.add(conversation_entry_ai)
+        db.commit()
+        db.refresh(conversation_entry_user)
+        db.refresh(conversation_entry_ai)
+    except Exception as e:
+        logger.error("Failed to save conversation history | session_ref=%s", session_log_ref(user_id), exc_info=True)
 
     state_manager.set_state(user_id, new_state, merged_data)
 
