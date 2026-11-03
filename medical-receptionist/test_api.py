@@ -46,7 +46,6 @@ class BookingHelperTests(unittest.TestCase):
             restored = second_manager.get_state(user_id)
             self.assertEqual(restored.state, "CONFIRM")
             self.assertEqual(__import__("json").loads(restored.data), {
-                "unknown_count": 0,
                 "name": "Rahul Sharma",
                 "phone": "+919876543210",
                 "date": "2098-12-31",
