@@ -20,9 +20,11 @@ from calendar_service import GoogleCalendarService
 
 
 class FakeEvents:
-    def __init__(self, events, delete_error=None):
+    def __init__(self, events, delete_error=None, insert_error=None, items_after_insert_error=None):
         self.items = events
         self.delete_error = delete_error
+        self.insert_error = insert_error
+        self.items_after_insert_error = items_after_insert_error
         self.last_query = None
         self.last_list_query = None
         self.last_deleted_event_id = None
@@ -52,13 +54,22 @@ class FakeEvents:
                 raise self.delete_error
             return {}
         if self.operation == "insert":
+            if self.insert_error is not None:
+                if self.items_after_insert_error is not None:
+                    self.items = self.items_after_insert_error
+                raise self.insert_error
             return {"id": "created-calendar-event"}
         return {"items": self.items}
 
 
 class FakeCalendar:
-    def __init__(self, events, delete_error=None):
-        self.events_api = FakeEvents(events, delete_error=delete_error)
+    def __init__(self, events, delete_error=None, insert_error=None, items_after_insert_error=None):
+        self.events_api = FakeEvents(
+            events,
+            delete_error=delete_error,
+            insert_error=insert_error,
+            items_after_insert_error=items_after_insert_error,
+        )
 
     def events(self):
         return self.events_api
