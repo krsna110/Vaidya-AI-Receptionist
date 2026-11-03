@@ -918,6 +918,12 @@ def serve_chat():
     return FileResponse("static/chat.html")
 
 
+@app.get("/portal")
+def serve_patient_portal():
+    """Serve the patient-facing portal and AI receptionist chat UI."""
+    return FileResponse("static/chat.html")
+
+
 @app.get("/admin")
 def serve_admin():
     """Serve the admin dashboard UI."""
@@ -969,6 +975,45 @@ async def cancel_appointment(
     db.add(appointment)
     db.commit()
     return {"status": "cancelled", "appointment_id": appointment_id}
+
+
+@app.get("/admin/conversations")
+async def get_admin_conversations(
+    current_user: auth.TokenData = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db),
+):
+    """Return recent patient conversation threads for the authenticated clinic team."""
+    rows = (
+        db.query(models.Conversation)
+        .order_by(models.Conversation.timestamp.desc(), models.Conversation.id.desc())
+        .limit(1500)
+        .all()
+    )
+    grouped = {}
+    for row in rows:
+        session_id = (row.session_id or "").strip()
+        if not session_id:
+            continue
+        thread = grouped.setdefault(session_id, {
+            "session_id": session_id,
+            "patient_id": row.patient_id,
+            "patient_name": row.patient.name if row.patient else None,
+            "messages": [],
+            "last_message": row.message or "",
+            "updated_at": row.timestamp.isoformat() if row.timestamp else None,
+        })
+        if len(thread["messages"]) < 30:
+            thread["messages"].append({
+                "id": row.id,
+                "sender": (row.speaker or row.sender_type or "unknown").lower(),
+                "message": row.message or "",
+                "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+            })
+    return sorted(
+        grouped.values(),
+        key=lambda item: item["updated_at"] or "",
+        reverse=True,
+    )[:100]
 
 
 @app.get("/patients")

@@ -9,10 +9,12 @@ on:
       - fix/issue-5-internal-webhook-auth
       - fix/whatsapp-render-entrypoint
       - chore/local-development-readiness
+      - feat/modern-light-frontend
   pull_request:
     branches:
       - main
       - fix/issue-5-internal-webhook-auth
+      - chore/local-development-readiness
 
 jobs:
   unit-tests:
